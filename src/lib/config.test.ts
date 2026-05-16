@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertProductionConfig, getAdminPassword, getDatabaseUrl } from "./config";
+import {
+  assertDatabaseConfig,
+  assertProductionConfig,
+  getAdminPassword,
+  getDatabaseUrl
+} from "./config";
 
 describe("production config validation", () => {
   afterEach(() => {
@@ -28,6 +33,20 @@ describe("production config validation", () => {
     vi.stubEnv("DATABASE_URL", "postgres://astar:change-me@postgres:5432/astar_monitor");
 
     expect(() => getDatabaseUrl()).toThrow("DATABASE_URL must be set");
+    expect(() => assertDatabaseConfig()).toThrow("DATABASE_URL must be set");
+  });
+
+  it("allows database initialization without unrelated service secrets", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PHASE", "");
+    vi.stubEnv("ADMIN_PASSWORD", "");
+    vi.stubEnv("POSTGRES_PASSWORD", "");
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgres://astar:strong-postgres-password@postgres:5432/astar_monitor"
+    );
+
+    expect(() => assertDatabaseConfig()).not.toThrow();
   });
 
   it("allows production builds to compile without runtime secrets", () => {

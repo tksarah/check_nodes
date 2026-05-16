@@ -49,3 +49,7 @@ export function assertProductionConfig() {
   requireProductionSecret("POSTGRES_PASSWORD", process.env.POSTGRES_PASSWORD);
   requireProductionSecret("DATABASE_URL", process.env.DATABASE_URL);
 }
+
+export function assertDatabaseConfig() {
+  requireProductionSecret("DATABASE_URL", process.env.DATABASE_URL);
+}
