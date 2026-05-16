@@ -22,7 +22,8 @@ function requireProductionSecret(name: string, value: string | undefined) {
     value == null ||
     PLACEHOLDER_VALUES.has(value.trim()) ||
     value.includes("change-me") ||
-    value.includes("<")
+    value.includes("<") ||
+    value.includes("replace-with")
   ) {
     throw new Error(`${name} must be set to a non-placeholder value in production`);
   }

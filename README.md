@@ -19,6 +19,7 @@ the Polkadot Telemetry feed.
 ```bash
 cp .env.example .env
 # Edit APP_DOMAIN, ADMIN_PASSWORD, and POSTGRES_PASSWORD in .env
+# Leave DATABASE_URL empty unless you use an external database.
 docker compose up -d --build
 ```
 
@@ -39,10 +40,12 @@ This compose stack includes Caddy for automatic HTTPS.
 ```bash
 APP_DOMAIN=monitor.example.com
 POSTGRES_PASSWORD=replace-with-a-long-random-postgres-password
-DATABASE_URL=postgres://astar:replace-with-a-long-random-postgres-password@postgres:5432/astar_monitor
 ADMIN_PASSWORD=replace-with-a-long-random-admin-password
 COOKIE_SECURE=true
 ```
+
+Leave `DATABASE_URL` empty for the bundled Compose postgres service. Set it only
+when using an external database.
 
 5. Start the stack:
 

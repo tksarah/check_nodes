@@ -17,7 +17,7 @@ services:
     build: .
     command: sh -c "npm run validate:runtime -- web && npm run migrate && npm run start"
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      DATABASE_URL: ${DATABASE_URL:-postgres://astar:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/astar_monitor}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
@@ -32,7 +32,7 @@ services:
     build: .
     command: sh -c "npm run validate:runtime -- worker && npm run migrate && npm run worker"
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
+      DATABASE_URL: ${DATABASE_URL:-postgres://astar:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/astar_monitor}
       TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
       ASTAR_GENESIS_HASH: ${ASTAR_GENESIS_HASH:-0x9eb76c5184c4ab8679d2d5d819fdf90b9c001403e9e17da2e14b6d8aec4029c6}
     depends_on:
