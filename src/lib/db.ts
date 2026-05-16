@@ -1,5 +1,7 @@
 import { Pool, PoolClient, QueryResultRow } from "pg";
-import { getDatabaseUrl } from "./config";
+import { assertProductionConfig, getDatabaseUrl } from "./config";
+
+assertProductionConfig();
 
 declare global {
   // eslint-disable-next-line no-var

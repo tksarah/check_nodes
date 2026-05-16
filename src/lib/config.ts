@@ -7,16 +7,45 @@ export const TELEMETRY_URL =
 
 export const ADMIN_COOKIE = "astar_admin";
 
+const PLACEHOLDER_VALUES = new Set(["", "change-me"]);
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build";
+}
+
+function requireProductionSecret(name: string, value: string | undefined) {
+  if (!isProductionRuntime()) {
+    return value;
+  }
+
+  if (
+    value == null ||
+    PLACEHOLDER_VALUES.has(value.trim()) ||
+    value.includes("change-me") ||
+    value.includes("<")
+  ) {
+    throw new Error(`${name} must be set to a non-placeholder value in production`);
+  }
+
+  return value;
+}
+
 export function getDatabaseUrl() {
-  return (
-    process.env.DATABASE_URL ?? "postgres://astar:astar@localhost:5432/astar_monitor"
-  );
+  const value = requireProductionSecret("DATABASE_URL", process.env.DATABASE_URL);
+  return value ?? "postgres://astar:astar@localhost:5432/astar_monitor";
 }
 
 export function getAdminPassword() {
-  return process.env.ADMIN_PASSWORD ?? "change-me";
+  const value = requireProductionSecret("ADMIN_PASSWORD", process.env.ADMIN_PASSWORD);
+  return value ?? "change-me";
 }
 
 export function isCookieSecureEnabled() {
   return process.env.COOKIE_SECURE !== "false";
+}
+
+export function assertProductionConfig() {
+  requireProductionSecret("ADMIN_PASSWORD", process.env.ADMIN_PASSWORD);
+  requireProductionSecret("POSTGRES_PASSWORD", process.env.POSTGRES_PASSWORD);
+  requireProductionSecret("DATABASE_URL", process.env.DATABASE_URL);
 }

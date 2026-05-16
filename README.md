@@ -33,7 +33,7 @@ This compose stack includes Caddy for automatic HTTPS.
 
 1. Point the DNS A/AAAA record for `APP_DOMAIN` to your server.
 2. Open TCP ports `80` and `443` on the server firewall.
-3. Create `.env` from `.env.example`.
+3. Create `.env` from `.env.example`. Do not leave placeholder values in place.
 4. Set at least:
 
 ```bash

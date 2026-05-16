@@ -4,7 +4,7 @@ import { Activity, LoaderCircle, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-export function RunCheckForm() {
+export function RunCheckForm({ csrfToken }: { csrfToken: string }) {
   const [clicked, setClicked] = useState(false);
 
   return (
@@ -14,6 +14,7 @@ export function RunCheckForm() {
       onSubmit={() => setClicked(true)}
       style={{ marginTop: 12 }}
     >
+      <input type="hidden" name="csrfToken" value={csrfToken} />
       <RunCheckButton clicked={clicked} />
     </form>
   );

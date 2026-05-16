@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Clock, Plus, Save, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { ADMIN_COOKIE } from "@/lib/config";
-import { isAdminAuthenticated } from "@/lib/auth";
+import { getAdminCsrfToken, isAdminAuthenticated } from "@/lib/auth";
 import { getDashboardData } from "@/lib/repository";
 import { formatDateTime } from "@/lib/format";
 import { RunCheckForm } from "./RunCheckForm";
@@ -23,6 +23,7 @@ export default async function AdminPage({
   }
 
   const { nodes, checkIntervalMinutes, lastCheckRun } = await getDashboardData();
+  const csrfToken = await getAdminCsrfToken();
 
   return (
     <main className="shell">
@@ -45,6 +46,7 @@ export default async function AdminPage({
             Dashboard
           </Link>
           <form action="/api/admin/logout" method="post">
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <button type="submit">Logout</button>
           </form>
         </nav>
@@ -88,6 +90,7 @@ export default async function AdminPage({
         <div className="card">
           <h2>Add node pattern</h2>
           <form className="form-grid" action="/api/admin/nodes" method="post">
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <label>
               Label
               <input name="label" placeholder="Astar archive Tokyo" required />
@@ -110,6 +113,7 @@ export default async function AdminPage({
             {lastCheckRun?.status ? ` / ${lastCheckRun.status}` : ""}
           </p>
           <form className="form-grid" action="/api/admin/settings" method="post">
+            <input type="hidden" name="csrfToken" value={csrfToken} />
             <label>
               Check interval
               <select name="checkIntervalMinutes" defaultValue={checkIntervalMinutes}>
@@ -123,7 +127,7 @@ export default async function AdminPage({
               Save interval
             </SubmitButton>
           </form>
-          <RunCheckForm />
+          <RunCheckForm csrfToken={csrfToken} />
         </div>
       </section>
 
@@ -152,6 +156,7 @@ export default async function AdminPage({
                       method="post"
                     >
                       <input type="hidden" name="action" value="update" />
+                      <input type="hidden" name="csrfToken" value={csrfToken} />
                       <input name="label" defaultValue={node.label} required />
                     </form>
                   </td>
@@ -177,6 +182,7 @@ export default async function AdminPage({
                   <td>
                     <div className="actions">
                       <form action={`/api/admin/nodes/${node.id}/toggle`} method="post">
+                        <input type="hidden" name="csrfToken" value={csrfToken} />
                         <input
                           type="hidden"
                           name="enabled"
@@ -188,6 +194,7 @@ export default async function AdminPage({
                       </form>
                       <form action={`/api/admin/nodes/${node.id}`} method="post">
                         <input type="hidden" name="action" value="delete" />
+                        <input type="hidden" name="csrfToken" value={csrfToken} />
                         <SubmitButton pendingLabel="Deleting...">
                           <Trash2 size={16} />
                           Delete

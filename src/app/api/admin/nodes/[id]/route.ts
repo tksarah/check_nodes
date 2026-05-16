@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminCsrf } from "@/lib/auth";
 import { redirectTo } from "@/lib/redirect";
 import { deleteMonitoredNode, updateMonitoredNode } from "@/lib/repository";
 
@@ -6,8 +6,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const unauthorized = await requireAdmin();
-  if (unauthorized) return unauthorized;
+  const invalid = await requireAdminCsrf(request);
+  if (invalid) return invalid;
 
   const form = await request.formData();
   const action = String(form.get("action") ?? "delete");

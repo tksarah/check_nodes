@@ -1,12 +1,11 @@
-import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminCsrf } from "@/lib/auth";
 import { adminCheckRedirectPath } from "@/lib/check-result";
 import { redirectTo } from "@/lib/redirect";
 import { recordTelemetryCheck } from "@/lib/repository";
 
 export async function POST(request: Request) {
-  const unauthorized = await requireAdmin();
-  if (unauthorized) return unauthorized;
+  const invalid = await requireAdminCsrf(request);
+  if (invalid) return invalid;
 
   try {
     const result = await recordTelemetryCheck({ source: "manual" });
