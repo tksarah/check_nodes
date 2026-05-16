@@ -38,9 +38,9 @@ This compose stack includes Caddy for automatic HTTPS.
 
 ```bash
 APP_DOMAIN=monitor.example.com
-POSTGRES_PASSWORD=<strong-password>
-DATABASE_URL=postgres://astar:<strong-password>@postgres:5432/astar_monitor
-ADMIN_PASSWORD=<strong-password>
+POSTGRES_PASSWORD=replace-with-a-long-random-postgres-password
+DATABASE_URL=postgres://astar:replace-with-a-long-random-postgres-password@postgres:5432/astar_monitor
+ADMIN_PASSWORD=replace-with-a-long-random-admin-password
 COOKIE_SECURE=true
 ```
 

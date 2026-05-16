@@ -8,6 +8,7 @@
     "start": "next start",
     "worker": "tsx src/worker/index.ts",
     "migrate": "tsx src/scripts/migrate.ts",
+    "validate:runtime": "tsx src/scripts/validate-runtime-config.ts",
     "check": "npm run test && npm run build",
     "test": "vitest run --environment node"
   },

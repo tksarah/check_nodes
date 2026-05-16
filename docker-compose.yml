@@ -15,7 +15,7 @@ services:
 
   web:
     build: .
-    command: sh -c "npm run migrate && npm run start"
+    command: sh -c "npm run validate:runtime -- web && npm run migrate && npm run start"
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
@@ -30,7 +30,7 @@ services:
 
   worker:
     build: .
-    command: sh -c "npm run migrate && npm run worker"
+    command: sh -c "npm run validate:runtime -- worker && npm run migrate && npm run worker"
     environment:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
       TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
