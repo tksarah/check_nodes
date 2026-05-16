@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: astar_monitor
+      POSTGRES_USER: astar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astar -d astar_monitor"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    command: sh -c "npm run migrate && npm run start"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://astar:${POSTGRES_PASSWORD:-change-me}@postgres:5432/astar_monitor}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
+      ASTAR_GENESIS_HASH: ${ASTAR_GENESIS_HASH:-0x9eb76c5184c4ab8679d2d5d819fdf90b9c001403e9e17da2e14b6d8aec4029c6}
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: sh -c "npm run migrate && npm run worker"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://astar:${POSTGRES_PASSWORD:-change-me}@postgres:5432/astar_monitor}
+      TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
+      ASTAR_GENESIS_HASH: ${ASTAR_GENESIS_HASH:-0x9eb76c5184c4ab8679d2d5d819fdf90b9c001403e9e17da2e14b6d8aec4029c6}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
