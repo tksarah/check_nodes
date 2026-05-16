@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { redirectTo } from "@/lib/redirect";
 import { deleteMonitoredNode, updateMonitoredNode } from "@/lib/repository";
 
 export async function POST(
@@ -29,5 +29,5 @@ export async function POST(
     await deleteMonitoredNode(Number(id));
   }
 
-  return NextResponse.redirect(new URL("/admin", request.url), 303);
+  return redirectTo("/admin");
 }

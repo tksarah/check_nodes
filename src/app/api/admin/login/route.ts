@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
 import { ADMIN_COOKIE } from "@/lib/config";
 import { isCookieSecureEnabled } from "@/lib/config";
 import { adminToken } from "@/lib/auth";
+import { redirectTo } from "@/lib/redirect";
 
 export async function POST(request: Request) {
   const form = await request.formData();
   const password = String(form.get("password") ?? "");
-  const response = NextResponse.redirect(new URL("/admin", request.url), 303);
+  const response = redirectTo("/admin");
 
   if (password === (process.env.ADMIN_PASSWORD ?? "change-me")) {
     response.cookies.set(ADMIN_COOKIE, adminToken(), {

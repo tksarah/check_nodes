@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { redirectTo } from "@/lib/redirect";
 import { setNodeEnabled } from "@/lib/repository";
 
 export async function POST(
@@ -12,5 +12,5 @@ export async function POST(
   const form = await request.formData();
   const { id } = await params;
   await setNodeEnabled(Number(id), String(form.get("enabled")) === "true");
-  return NextResponse.redirect(new URL("/admin", request.url), 303);
+  return redirectTo("/admin");
 }

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { redirectTo } from "@/lib/redirect";
 import { setCheckIntervalMinutes } from "@/lib/repository";
 
 const ALLOWED_INTERVALS = new Set([60, 180, 360, 720]);
@@ -16,5 +16,5 @@ export async function POST(request: Request) {
   }
 
   await setCheckIntervalMinutes(minutes);
-  return NextResponse.redirect(new URL("/admin", request.url), 303);
+  return redirectTo("/admin");
 }
