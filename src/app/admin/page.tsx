@@ -226,9 +226,8 @@ async function Login() {
         />
         <p className="eyebrow">Admin login</p>
         <h1>
-          <ShieldCheck size={32} /> Protected controls
+          <ShieldCheck size={32} /> Admin Panel
         </h1>
-        <p className="muted">Dashboard viewing is public. Management requires ADMIN_PASSWORD.</p>
         <form className="form-grid" action="/api/admin/login" method="post">
           <label>
             Password

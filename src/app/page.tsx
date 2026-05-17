@@ -1,4 +1,4 @@
-import { Activity, Gauge, Server, Settings, Timer, TrendingUp } from "lucide-react";
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/repository";
 import {
@@ -15,38 +15,59 @@ export default async function DashboardPage() {
   const { nodes, lastCheckRun, checkIntervalMinutes } = await getDashboardData();
   const enabledNodes = nodes.filter((node) => node.enabled);
   const onlineNodes = enabledNodes.filter((node) => node.latestSample?.isOnline);
+  const offlineNodes = enabledNodes.length - onlineNodes.length;
   const weeklyAverage = averageAvailability(enabledNodes.map((node) => node.weekly));
   const monthlyAverage = averageAvailability(enabledNodes.map((node) => node.monthly));
+  const checkStatusLabel =
+    lastCheckRun?.status === "error"
+      ? "Check error"
+      : offlineNodes > 0
+        ? `${offlineNodes} node${offlineNodes === 1 ? "" : "s"} need attention`
+        : "All monitored nodes online";
+  const checkStatusTone = lastCheckRun?.status === "error" ? "error" : offlineNodes > 0 ? "warning" : "healthy";
 
   return (
     <main className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <img
-            className="brand-logo"
-            src="/brand/astar-color-white.png"
-            alt="Astar"
-          />
-          <div>
-            <p className="eyebrow">Astar Network</p>
-            <h1>Archive Node Monitor</h1>
+      <header className="topbar topbar-operations">
+        <div className="topbar-main">
+          <div className="brand brand-compact">
+            <img
+              className="brand-symbol"
+              src="/brand/astar-symbol-color.png"
+              alt="Astar"
+            />
+            <div>
+              <p className="eyebrow">Astar Network</p>
+              <h1>Peers Program Dashboard</h1>
+              <p className="muted topbar-subtitle">
+                Archive node uptime and telemetry status at a glance.
+              </p>
+            </div>
+          </div>
+          <nav className="nav topbar-actions">
+            <Link className="button topbar-button" href="/admin">
+              <Settings size={16} />
+              Admin
+            </Link>
+          </nav>
+        </div>
+
+        <div className="topbar-strip" aria-label="Dashboard overview">
+          <div className="topbar-chips">
+            <StripChip label="Monitored nodes" value={enabledNodes.length} />
+            <StripChip label="Online now" value={`${onlineNodes.length}/${enabledNodes.length}`} />
+            <StripChip label="Offline now" value={offlineNodes} />
+            <StripChip label="Interval" value={`${checkIntervalMinutes}m`} />
+            <StripChip
+              label="Last checked"
+              value={formatDateTime(lastCheckRun?.checked_at) ?? "Not yet run"}
+            />
+            <StripChip label="Weekly avg" value={formatPercent(weeklyAverage)} />
+            <StripChip label="Monthly avg" value={formatPercent(monthlyAverage)} />
+            <p className={`signal-pill ${checkStatusTone}`}>{checkStatusLabel}</p>
           </div>
         </div>
-        <nav className="nav">
-          <Link className="button" href="/admin">
-            <Settings size={16} />
-            Admin
-          </Link>
-        </nav>
       </header>
-
-      <section className="grid summary-grid">
-        <Metric icon={<Server size={18} />} label="Monitored nodes" value={enabledNodes.length} />
-        <Metric icon={<Activity size={18} />} label="Online now" value={`${onlineNodes.length}/${enabledNodes.length}`} />
-        <Metric icon={<Timer size={18} />} label="Check interval" value={`${checkIntervalMinutes}m`} />
-        <Metric icon={<TrendingUp size={18} />} label="Weekly avg" value={formatPercent(weeklyAverage)} />
-        <Metric icon={<Gauge size={18} />} label="Monthly avg" value={formatPercent(monthlyAverage)} />
-      </section>
 
       <section className="panel">
         <div className="panel-header">
@@ -127,21 +148,17 @@ export default async function DashboardPage() {
   );
 }
 
-function Metric({
-  icon,
+function StripChip({
   label,
   value
 }: {
-  icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
 }) {
   return (
-    <div className="card">
-      <div className="metric-label">
-        {icon} {label}
-      </div>
-      <div className="metric-value">{value}</div>
+    <div className="strip-chip">
+      <span className="strip-chip-label">{label}</span>
+      <strong className="strip-chip-value">{value}</strong>
     </div>
   );
 }

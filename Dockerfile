@@ -8,5 +8,8 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY . .
 RUN npm run build
+RUN chown -R node:node /app
+
+USER node
 
 EXPOSE 3000

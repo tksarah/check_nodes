@@ -1,4 +1,4 @@
-# Astar Archive Node Monitor
+# Peers Program Dashboard
 
 Self-hosted portal for monitoring selected Astar Network archive node names from
 the Polkadot Telemetry feed.
@@ -56,6 +56,19 @@ docker compose up -d --build
 Caddy terminates TLS and proxies traffic to the internal `web:3000` service.
 The web container does not publish port `3000` to the host in the production
 compose file.
+
+## Public Launch Checklist
+
+Before opening the app to the internet, verify the following:
+
+- Only TCP `80` and `443` are reachable from the internet. Keep `3000` and
+  `5432` closed in your cloud firewall or security group.
+- HTTPS responses include the expected security headers from Caddy:
+  `Strict-Transport-Security`, `X-Content-Type-Options`, `Referrer-Policy`,
+  `X-Frame-Options`, and `Permissions-Policy`.
+- The `web` and `worker` containers run as a non-root user.
+- Run a production dependency audit and a container image vulnerability scan.
+  Treat unresolved high or critical runtime findings as release blockers.
 
 ## Local Development
 

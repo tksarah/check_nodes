@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Astar Archive Monitor",
+  title: "Peers Program Dashboard",
   description: "Astar Network archive node uptime monitoring portal",
   icons: {
     icon: "/brand/astar-symbol-color.png",
