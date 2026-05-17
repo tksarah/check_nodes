@@ -51,6 +51,8 @@ describe("telemetry feed parser", () => {
       nodeUptimeSeconds: 3600,
       blockHeight: 12345,
       location: "Tokyo",
+      latitude: 35.68,
+      longitude: 139.76,
       stale: false
     });
 
@@ -81,6 +83,8 @@ describe("telemetry feed parser", () => {
       now
     );
     expect(activeNodes.get(1).location).toBe("Osaka");
+    expect(activeNodes.get(1).latitude).toBe(34.69);
+    expect(activeNodes.get(1).longitude).toBe(135.5);
 
     applyFeedMessages(
       activeNodes,

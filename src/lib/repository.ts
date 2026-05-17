@@ -1,5 +1,6 @@
 import { PoolClient } from "pg";
 import { pool, query } from "./db";
+import { resolveLocationCoordinates } from "./location-coordinates";
 import { nodeNameMatches, fetchTelemetrySnapshot } from "./telemetry";
 import { AvailabilitySummary, MonitoredNode, NodeSample, NodeSummary } from "./types";
 
@@ -25,6 +26,9 @@ type SampleRow = {
   block_height: string | null;
   finalized_block_height: string | null;
   location: string | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+  coordinate_source: "telemetry" | "lastKnown" | "location" | null;
   version: string | null;
 };
 
@@ -52,6 +56,9 @@ export function mapSample(row: SampleRow): NodeSample {
     finalizedBlockHeight:
       row.finalized_block_height == null ? null : Number(row.finalized_block_height),
     location: row.location,
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
+    coordinateSource: row.coordinate_source,
     version: row.version
   };
 }
@@ -197,6 +204,11 @@ async function saveSuccessfulCheck(
       nodeNameMatches(node.namePattern, telemetryNode.name)
     );
     const primaryMatch = matches[0] ?? null;
+    const coordinates = resolveSampleCoordinates(
+      primaryMatch?.latitude ?? null,
+      primaryMatch?.longitude ?? null,
+      primaryMatch?.location ?? null
+    );
 
     await client.query(
       `insert into node_samples (
@@ -210,9 +222,12 @@ async function saveSuccessfulCheck(
          block_height,
          finalized_block_height,
          location,
+         latitude,
+         longitude,
+         coordinate_source,
          version
        )
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         node.id,
         checkRunId,
@@ -224,6 +239,9 @@ async function saveSuccessfulCheck(
         primaryMatch?.blockHeight ?? null,
         primaryMatch?.finalizedBlockHeight ?? null,
         primaryMatch?.location ?? null,
+        coordinates.latitude,
+        coordinates.longitude,
+        coordinates.coordinateSource,
         primaryMatch?.version ?? null
       ]
     );
@@ -257,6 +275,17 @@ export async function getLatestSamples() {
   const result = await query<SampleRow>(
     `select distinct on (node_id) *
      from node_samples
+     order by node_id, checked_at desc`
+  );
+
+  return new Map(result.rows.map((row) => [Number(row.node_id), mapSample(row)]));
+}
+
+export async function getLastKnownLocationSamples() {
+  const result = await query<SampleRow>(
+    `select distinct on (node_id) *
+     from node_samples
+     where latitude is not null and longitude is not null
      order by node_id, checked_at desc`
   );
 
@@ -304,10 +333,17 @@ export async function getLastCheckRun() {
 }
 
 export async function getDashboardData() {
-  const [nodes, latestSamples, lastCheckRun, checkIntervalMinutes] =
+  const [
+    nodes,
+    latestSamples,
+    lastKnownLocationSamples,
+    lastCheckRun,
+    checkIntervalMinutes
+  ] =
     await Promise.all([
       getMonitoredNodes(true),
       getLatestSamples(),
+      getLastKnownLocationSamples(),
       getLastCheckRun(),
       getCheckIntervalMinutes()
     ]);
@@ -315,7 +351,10 @@ export async function getDashboardData() {
   const summaries = await Promise.all(
     nodes.map(async (node): Promise<NodeSummary> => ({
       ...node,
-      latestSample: latestSamples.get(node.id) ?? null,
+      latestSample: mergeLatestSampleWithLastKnownLocation(
+        latestSamples.get(node.id) ?? null,
+        lastKnownLocationSamples.get(node.id) ?? null
+      ),
       weekly: await getAvailabilitySummary(node.id, 7),
       monthly: await getAvailabilitySummary(node.id, 30)
     }))
@@ -326,6 +365,56 @@ export async function getDashboardData() {
     lastCheckRun,
     checkIntervalMinutes
   };
+}
+
+export function mergeLatestSampleWithLastKnownLocation(
+  latestSample: NodeSample | null,
+  lastKnownLocationSample: NodeSample | null
+) {
+  if (!latestSample) return latestSample;
+  if (latestSample.latitude != null && latestSample.longitude != null) {
+    return latestSample;
+  }
+  if (lastKnownLocationSample) {
+    return {
+      ...latestSample,
+      location: latestSample.location ?? lastKnownLocationSample.location,
+      latitude: lastKnownLocationSample.latitude,
+      longitude: lastKnownLocationSample.longitude,
+      coordinateSource: "lastKnown" as const
+    };
+  }
+
+  const locationCoordinates = resolveLocationCoordinates(latestSample.location);
+  if (!locationCoordinates) return latestSample;
+
+  return {
+    ...latestSample,
+    latitude: locationCoordinates.latitude,
+    longitude: locationCoordinates.longitude,
+    coordinateSource: "location" as const
+  };
+}
+
+function resolveSampleCoordinates(
+  latitude: number | null,
+  longitude: number | null,
+  location: string | null
+) {
+  if (latitude != null && longitude != null) {
+    return { latitude, longitude, coordinateSource: "telemetry" as const };
+  }
+
+  const locationCoordinates = resolveLocationCoordinates(location);
+  if (locationCoordinates) {
+    return {
+      latitude: locationCoordinates.latitude,
+      longitude: locationCoordinates.longitude,
+      coordinateSource: "location" as const
+    };
+  }
+
+  return { latitude: null, longitude: null, coordinateSource: null };
 }
 
 export async function getAvailabilitySummary(

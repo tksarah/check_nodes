@@ -37,12 +37,18 @@ create table if not exists node_samples (
   block_height bigint,
   finalized_block_height bigint,
   location text,
+  latitude numeric,
+  longitude numeric,
+  coordinate_source text,
   version text
 );
 
 alter table node_samples
   add column if not exists finalized_block_height bigint,
-  add column if not exists location text;
+  add column if not exists location text,
+  add column if not exists latitude numeric,
+  add column if not exists longitude numeric,
+  add column if not exists coordinate_source text;
 
 create index if not exists idx_node_samples_node_checked
   on node_samples (node_id, checked_at desc);

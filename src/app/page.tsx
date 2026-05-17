@@ -1,6 +1,8 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { projectEquirectangular } from "@/lib/map-projection";
 import { getDashboardData } from "@/lib/repository";
+import type { NodeSample, NodeSummary } from "@/lib/types";
 import {
   averageAvailability,
   formatDateTime,
@@ -68,6 +70,8 @@ export default async function DashboardPage() {
           </div>
         </div>
       </header>
+
+      <NodeWorldMap nodes={enabledNodes} />
 
       <section className="panel">
         <div className="panel-header">
@@ -146,6 +150,115 @@ export default async function DashboardPage() {
       </section>
     </main>
   );
+}
+
+function NodeWorldMap({ nodes }: { nodes: NodeSummary[] }) {
+  const mappedNodes = getMappedNodes(nodes);
+  const pendingNodes = nodes.filter(
+    (node) =>
+      node.enabled &&
+      (node.latestSample?.latitude == null || node.latestSample.longitude == null)
+  );
+  const onlineCount = mappedNodes.filter((node) => node.isOnline).length;
+  const offlineCount = mappedNodes.length - onlineCount;
+
+  return (
+    <section className="panel map-panel" aria-labelledby="node-map-title">
+      <div className="panel-header map-panel-header">
+        <div>
+          <h2 id="node-map-title">Node map</h2>
+          <p className="muted">
+            Last known location and current online status for monitored nodes.
+          </p>
+        </div>
+        <div className="map-legend" aria-label="Map status legend">
+          <span><i className="map-dot online" /> Online {onlineCount}</span>
+          <span><i className="map-dot offline" /> Offline {offlineCount}</span>
+          <span><i className="map-dot pending" /> Location pending {pendingNodes.length}</span>
+        </div>
+      </div>
+
+      <div className="map-stage" role="group" aria-label="World map of monitored node locations">
+        <img
+          className="world-map"
+          src="/maps/world-map-dark.png"
+          alt=""
+          aria-hidden="true"
+        />
+
+        {mappedNodes.map((node) => (
+          <Link
+            key={node.id}
+            href={`/nodes/${node.id}`}
+            className={`map-marker ${node.isOnline ? "online" : "offline"}`}
+            style={{
+              left: `${node.x}%`,
+              top: `${node.y}%`,
+              transform: `translate(-50%, -50%) translate(${node.offsetX}px, ${node.offsetY}px)`
+            }}
+            aria-label={`${node.label}: ${node.isOnline ? "Online" : "Offline"} at ${node.location}. Coordinates from ${node.coordinateSource}.`}
+            title={`${node.label} / ${node.isOnline ? "Online" : "Offline"} / ${node.location} / ${node.coordinateSource}`}
+          >
+            <span className="map-marker-pulse" aria-hidden="true" />
+          </Link>
+        ))}
+
+        {mappedNodes.length === 0 ? (
+          <div className="map-empty">No node locations available yet.</div>
+        ) : null}
+      </div>
+
+      {pendingNodes.length > 0 ? (
+        <div className="map-pending">
+          <span>Location pending</span>
+          {pendingNodes.slice(0, 4).map((node) => (
+            <Link key={node.id} href={`/nodes/${node.id}`}>{node.label}</Link>
+          ))}
+          {pendingNodes.length > 4 ? <span>+{pendingNodes.length - 4} more</span> : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function getMappedNodes(nodes: NodeSummary[]) {
+  const groups = new Map<string, number>();
+
+  return nodes
+    .filter(
+      (node) =>
+        node.enabled &&
+        node.latestSample?.latitude != null &&
+        node.latestSample.longitude != null
+    )
+    .map((node) => {
+      const latitude = node.latestSample!.latitude!;
+      const longitude = node.latestSample!.longitude!;
+      const point = projectEquirectangular(latitude, longitude);
+      const groupKey = `${latitude.toFixed(1)}:${longitude.toFixed(1)}`;
+      const groupIndex = groups.get(groupKey) ?? 0;
+      groups.set(groupKey, groupIndex + 1);
+      const angle = groupIndex * 1.7;
+      const radius = groupIndex === 0 ? 0 : 9 + groupIndex * 2;
+
+      return {
+        id: node.id,
+        label: node.label,
+        location: node.latestSample!.location ?? "Unknown location",
+        coordinateSource: formatCoordinateSource(node.latestSample!.coordinateSource),
+        isOnline: node.latestSample!.isOnline,
+        x: point.x,
+        y: point.y,
+        offsetX: Math.cos(angle) * radius,
+        offsetY: Math.sin(angle) * radius
+      };
+    });
+}
+
+function formatCoordinateSource(source: NodeSample["coordinateSource"]) {
+  if (source === "lastKnown") return "Last known coordinates";
+  if (source === "location") return "Location lookup";
+  return "Telemetry coordinates";
 }
 
 function StripChip({

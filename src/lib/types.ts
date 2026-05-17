@@ -12,6 +12,8 @@ export type TelemetryNode = {
   name: string;
   version: string | null;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   startupTime: Date | null;
   nodeUptimeSeconds: number | null;
   blockHeight: number | null;
@@ -30,6 +32,9 @@ export type NodeSample = {
   blockHeight: number | null;
   finalizedBlockHeight: number | null;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  coordinateSource: "telemetry" | "lastKnown" | "location" | null;
   version: string | null;
 };
 

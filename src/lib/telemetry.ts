@@ -83,7 +83,7 @@ export function parseAddedNode(payload: unknown, now = new Date()): TelemetryNod
     telemetryId,
     name,
     version,
-    location,
+    ...location,
     startupTime,
     nodeUptimeSeconds: startupTime
       ? Math.max(0, Math.floor((now.getTime() - startupTime.getTime()) / 1000))
@@ -95,10 +95,16 @@ export function parseAddedNode(payload: unknown, now = new Date()): TelemetryNod
 }
 
 function parseLocation(locationDetails: unknown[] | null | undefined) {
-  if (!Array.isArray(locationDetails)) return null;
+  if (!Array.isArray(locationDetails)) {
+    return { location: null, latitude: null, longitude: null };
+  }
 
+  const latitude = typeof locationDetails[0] === "number" ? locationDetails[0] : null;
+  const longitude = typeof locationDetails[1] === "number" ? locationDetails[1] : null;
   const city = locationDetails[2];
-  return city == null || String(city).trim() === "" ? null : String(city);
+  const location = city == null || String(city).trim() === "" ? null : String(city);
+
+  return { location, latitude, longitude };
 }
 
 export function applyFeedMessages(
@@ -136,7 +142,7 @@ export function applyFeedMessages(
         if (node) {
           activeNodes.set(node.telemetryId, {
             ...node,
-            location: parseLocation([payload[1], payload[2], payload[3]])
+            ...parseLocation([payload[1], payload[2], payload[3]])
           });
         }
       }
