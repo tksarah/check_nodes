@@ -183,6 +183,7 @@ function SortableHeader({
     <th scope="col" aria-sort={getAriaSort(direction)}>
       <Link
         className={`sort-link${isActive ? " active" : ""}`}
+        scroll={false}
         href={{
           pathname: "/",
           query: {
