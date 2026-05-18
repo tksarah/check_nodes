@@ -376,6 +376,11 @@ button:disabled {
   box-shadow: 0 0 14px rgba(53, 242, 162, 0.64);
 }
 
+.map-dot.syncing {
+  background: #aab1c5;
+  box-shadow: 0 0 12px rgba(170, 177, 197, 0.42);
+}
+
 .map-dot.offline {
   background: var(--red);
   box-shadow: 0 0 14px rgba(255, 101, 127, 0.48);
@@ -435,6 +440,10 @@ button:disabled {
 
 .map-marker.online {
   color: var(--green);
+}
+
+.map-marker.syncing {
+  color: #aab1c5;
 }
 
 .map-marker.offline {
@@ -598,8 +607,8 @@ th {
 }
 
 .dot.syncing {
-  background: var(--yellow);
-  box-shadow: 0 0 18px rgba(255, 196, 77, 0.7);
+  background: #aab1c5;
+  box-shadow: 0 0 14px rgba(170, 177, 197, 0.42);
 }
 
 .pill {
@@ -817,6 +826,11 @@ button.clicked {
   box-shadow: 0 0 14px rgba(53, 242, 162, 0.24);
 }
 
+.trend-bars span.syncing {
+  background: linear-gradient(180deg, rgba(170, 177, 197, 0.94), rgba(111, 119, 143, 0.76));
+  box-shadow: 0 0 12px rgba(170, 177, 197, 0.16);
+}
+
 .trend-bars span.offline {
   background: linear-gradient(180deg, rgba(255, 101, 127, 0.92), rgba(153, 55, 77, 0.74));
 }
@@ -845,6 +859,10 @@ button.clicked {
 
 .legend-online {
   background: var(--green);
+}
+
+.legend-syncing {
+  background: #aab1c5;
 }
 
 .legend-offline {

@@ -1,7 +1,6 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import {
-  getDashboardNodeStatus,
   getNextDashboardSort,
   parseDashboardSort,
   sortDashboardNodes,
@@ -9,6 +8,7 @@ import {
   type DashboardSortState
 } from "@/lib/dashboard-sort";
 import { projectEquirectangular } from "@/lib/map-projection";
+import { getDashboardNodeStatus, getNodeStatusLabel } from "@/lib/node-status";
 import { getDashboardData } from "@/lib/repository";
 import type { NodeSample, NodeSummary } from "@/lib/types";
 import {
@@ -116,16 +116,7 @@ export default async function DashboardPage({
             <tbody>
               {sortedNodes.map((node) => {
                 const status = getDashboardNodeStatus(node);
-                const statusLabel =
-                  status === "online"
-                    ? "Online"
-                    : status === "syncing"
-                      ? "Syncing"
-                      : status === "offline"
-                        ? "Offline"
-                        : status === "disabled"
-                          ? "Disabled"
-                          : "Unknown";
+                const statusLabel = getNodeStatusLabel(status);
 
                 return (
                 <tr key={node.id}>
@@ -226,8 +217,9 @@ function NodeWorldMap({ nodes }: { nodes: NodeSummary[] }) {
       node.enabled &&
       (node.latestSample?.latitude == null || node.latestSample.longitude == null)
   );
-  const onlineCount = mappedNodes.filter((node) => node.isOnline).length;
-  const offlineCount = mappedNodes.length - onlineCount;
+  const onlineCount = mappedNodes.filter((node) => node.status === "online").length;
+  const syncingCount = mappedNodes.filter((node) => node.status === "syncing").length;
+  const offlineCount = mappedNodes.filter((node) => node.status === "offline").length;
 
   return (
     <section className="panel map-panel" aria-labelledby="node-map-title">
@@ -240,6 +232,7 @@ function NodeWorldMap({ nodes }: { nodes: NodeSummary[] }) {
         </div>
         <div className="map-legend" aria-label="Map status legend">
           <span><i className="map-dot online" /> Online {onlineCount}</span>
+          <span><i className="map-dot syncing" /> Syncing {syncingCount}</span>
           <span><i className="map-dot offline" /> Offline {offlineCount}</span>
           <span><i className="map-dot pending" /> Location pending {pendingNodes.length}</span>
         </div>
@@ -257,14 +250,14 @@ function NodeWorldMap({ nodes }: { nodes: NodeSummary[] }) {
           <Link
             key={node.id}
             href={`/nodes/${node.id}`}
-            className={`map-marker ${node.isOnline ? "online" : "offline"}`}
+            className={`map-marker ${node.status}`}
             style={{
               left: `${node.x}%`,
               top: `${node.y}%`,
               transform: `translate(-50%, -50%) translate(${node.offsetX}px, ${node.offsetY}px)`
             }}
-            aria-label={`${node.label}: ${node.isOnline ? "Online" : "Offline"} at ${node.location}. Coordinates from ${node.coordinateSource}.`}
-            title={`${node.label} / ${node.isOnline ? "Online" : "Offline"} / ${node.location} / ${node.coordinateSource}`}
+            aria-label={`${node.label}: ${node.statusLabel} at ${node.location}. Coordinates from ${node.coordinateSource}.`}
+            title={`${node.label} / ${node.statusLabel} / ${node.location} / ${node.coordinateSource}`}
           >
             <span className="map-marker-pulse" aria-hidden="true" />
           </Link>
@@ -307,13 +300,15 @@ function getMappedNodes(nodes: NodeSummary[]) {
       groups.set(groupKey, groupIndex + 1);
       const angle = groupIndex * 1.7;
       const radius = groupIndex === 0 ? 0 : 9 + groupIndex * 2;
+      const status = getDashboardNodeStatus(node);
 
       return {
         id: node.id,
         label: node.label,
         location: node.latestSample!.location ?? "Unknown location",
         coordinateSource: formatCoordinateSource(node.latestSample!.coordinateSource),
-        isOnline: node.latestSample!.isOnline,
+        status,
+        statusLabel: getNodeStatusLabel(status),
         x: point.x,
         y: point.y,
         offsetX: Math.cos(angle) * radius,

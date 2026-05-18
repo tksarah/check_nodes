@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { formatDateTime, formatDuration } from "@/lib/format";
+import { getNodeStatusLabel, getSampleNodeStatus } from "@/lib/node-status";
 import {
   getMonitoredNodes,
   getSampleCountForNode,
@@ -176,27 +177,31 @@ export default async function NodeDetailPage({
                   </td>
                 </tr>
               ) : (
-                samples.map((sample) => (
-                  <tr key={sample.id}>
-                    <td>{formatDateTime(sample.checkedAt)}</td>
-                    <td>
-                      <span className="status">
-                        <span className={`dot ${sample.isOnline ? "online" : ""}`} />
-                        {sample.isOnline ? "Online" : "Offline"}
-                      </span>
-                    </td>
-                    <td>
-                      {sample.matchedTelemetryNames.length
-                        ? sample.matchedTelemetryNames.join(", ")
-                        : "-"}
-                    </td>
-                    <td>{sample.location ?? "-"}</td>
-                    <td>{formatDuration(sample.nodeUptimeSeconds)}</td>
-                    <td>{sample.blockHeight ?? "-"}</td>
-                    <td>{sample.finalizedBlockHeight ?? "-"}</td>
-                    <td>{sample.version ?? "-"}</td>
-                  </tr>
-                ))
+                samples.map((sample) => {
+                  const status = getSampleNodeStatus(sample);
+
+                  return (
+                    <tr key={sample.id}>
+                      <td>{formatDateTime(sample.checkedAt)}</td>
+                      <td>
+                        <span className="status">
+                          <span className={`dot ${status}`} />
+                          {getNodeStatusLabel(status)}
+                        </span>
+                      </td>
+                      <td>
+                        {sample.matchedTelemetryNames.length
+                          ? sample.matchedTelemetryNames.join(", ")
+                          : "-"}
+                      </td>
+                      <td>{sample.location ?? "-"}</td>
+                      <td>{formatDuration(sample.nodeUptimeSeconds)}</td>
+                      <td>{sample.blockHeight ?? "-"}</td>
+                      <td>{sample.finalizedBlockHeight ?? "-"}</td>
+                      <td>{sample.version ?? "-"}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -246,23 +251,28 @@ function OnlineTrend({
               className="trend-bars"
               style={{ gridTemplateColumns: `repeat(${samples.length}, minmax(10px, 1fr))` }}
             >
-              {samples.map((sample) => (
-                <span
-                  key={sample.id}
-                  className={sample.isOnline ? "online" : "offline"}
-                  title={[
-                    formatDateTime(sample.checkedAt),
-                    sample.isOnline ? "Online" : "Offline",
-                    sample.matchedTelemetryNames.length
-                      ? `Matched: ${sample.matchedTelemetryNames.join(", ")}`
-                      : "No matched telemetry"
-                  ].join(" / ")}
-                />
-              ))}
+              {samples.map((sample) => {
+                const status = getSampleNodeStatus(sample);
+
+                return (
+                  <span
+                    key={sample.id}
+                    className={status}
+                    title={[
+                      formatDateTime(sample.checkedAt),
+                      getNodeStatusLabel(status),
+                      sample.matchedTelemetryNames.length
+                        ? `Matched: ${sample.matchedTelemetryNames.join(", ")}`
+                        : "No matched telemetry"
+                    ].join(" / ")}
+                  />
+                );
+              })}
             </div>
           </div>
           <div className="trend-legend">
             <span><i className="legend-online" /> Online</span>
+            <span><i className="legend-syncing" /> Syncing</span>
             <span><i className="legend-offline" /> Offline</span>
             <span>{samples.length} samples</span>
           </div>

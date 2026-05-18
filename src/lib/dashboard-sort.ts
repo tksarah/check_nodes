@@ -1,17 +1,13 @@
 import { NodeSummary } from "./types";
+import { getDashboardNodeStatus } from "./node-status";
 
 export const DASHBOARD_SORT_COLUMNS = ["status", "uptime", "weekly", "monthly"] as const;
 export const DASHBOARD_SORT_DIRECTIONS = ["asc", "desc"] as const;
-export const SYNCING_BLOCK_GAP_THRESHOLD = 512;
 
 export type DashboardSortColumn = (typeof DASHBOARD_SORT_COLUMNS)[number];
 export type DashboardSortDirection = (typeof DASHBOARD_SORT_DIRECTIONS)[number];
-export type DashboardNodeStatus =
-  | "unknown"
-  | "disabled"
-  | "offline"
-  | "syncing"
-  | "online";
+export type { NodeStatus as DashboardNodeStatus } from "./node-status";
+export { getDashboardNodeStatus, SYNCING_BLOCK_GAP_THRESHOLD } from "./node-status";
 
 export type DashboardSortState = {
   column: DashboardSortColumn;
@@ -52,25 +48,6 @@ export function getNextDashboardSort(
   }
 
   return { column, direction: "desc" };
-}
-
-export function getDashboardNodeStatus(node: NodeSummary): DashboardNodeStatus {
-  if (!node.latestSample) return "unknown";
-  if (!node.enabled) return "disabled";
-  if (node.latestSample.isOnline === false) return "offline";
-  if (node.latestSample.isOnline !== true) return "unknown";
-
-  const { blockHeight, finalizedBlockHeight } = node.latestSample;
-
-  if (
-    blockHeight != null &&
-    finalizedBlockHeight != null &&
-    blockHeight - finalizedBlockHeight >= SYNCING_BLOCK_GAP_THRESHOLD
-  ) {
-    return "syncing";
-  }
-
-  return "online";
 }
 
 function normalizeColumn(value?: string | string[]) {
