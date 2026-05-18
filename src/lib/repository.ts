@@ -292,17 +292,33 @@ export async function getLastKnownLocationSamples() {
   return new Map(result.rows.map((row) => [Number(row.node_id), mapSample(row)]));
 }
 
-export async function getSamplesForNode(nodeId: number, limit = 120) {
+export async function getSampleCountForNode(nodeId: number) {
+  const result = await query<{ count: string }>(
+    `select count(*)::text as count
+     from node_samples
+     where node_id = $1`,
+    [nodeId]
+  );
+
+  return Number(result.rows[0]?.count ?? "0");
+}
+
+export async function getSamplePageForNode(nodeId: number, limit: number, offset = 0) {
   const result = await query<SampleRow>(
     `select *
      from node_samples
      where node_id = $1
      order by checked_at desc
-     limit $2`,
-    [nodeId, limit]
+     limit $2
+     offset $3`,
+    [nodeId, limit, offset]
   );
 
   return result.rows.map(mapSample);
+}
+
+export async function getSamplesForNode(nodeId: number, limit = 120) {
+  return getSamplePageForNode(nodeId, limit, 0);
 }
 
 export async function getSamplesForNodeSince(nodeId: number, since: Date) {

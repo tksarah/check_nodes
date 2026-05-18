@@ -4,25 +4,45 @@ import { notFound } from "next/navigation";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import {
   getMonitoredNodes,
-  getSamplesForNode,
+  getSampleCountForNode,
+  getSamplePageForNode,
   getSamplesForNodeSince
 } from "@/lib/repository";
 import { getTrendSince, parseTrendRange, TREND_RANGES, TrendRange } from "@/lib/range";
+import {
+  DEFAULT_SAMPLE_PAGE_SIZE,
+  getSamplePagination,
+  getSingleQueryValue,
+  SAMPLE_PAGE_SIZES
+} from "@/lib/samples-pagination";
 import { NodeSample } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+type NodeDetailSearchParams = {
+  range?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+};
+
+type NodeDetailQueryState = {
+  range?: string;
+  page?: string;
+  pageSize?: string;
+};
 
 export default async function NodeDetailPage({
   params,
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ range?: string | string[] }>;
+  searchParams?: Promise<NodeDetailSearchParams>;
 }) {
   const { id } = await params;
   const query = await searchParams;
+  const currentQuery = normalizeNodeDetailQuery(query);
   const nodeId = Number(id);
-  const range = parseTrendRange(query?.range);
+  const range = parseTrendRange(currentQuery.range);
   const since = getTrendSince(range);
   const nodes = await getMonitoredNodes(true);
   const node = nodes.find((candidate) => candidate.id === nodeId);
@@ -31,10 +51,20 @@ export default async function NodeDetailPage({
     notFound();
   }
 
-  const [samples, trendSamples] = await Promise.all([
-    getSamplesForNode(nodeId, 120),
+  const [sampleCount, trendSamples] = await Promise.all([
+    getSampleCountForNode(nodeId),
     getSamplesForNodeSince(nodeId, since)
   ]);
+  const samplePagination = getSamplePagination(
+    sampleCount,
+    currentQuery.page,
+    currentQuery.pageSize
+  );
+  const samples = await getSamplePageForNode(
+    nodeId,
+    samplePagination.pageSize,
+    samplePagination.offset
+  );
 
   return (
     <main className="shell">
@@ -52,13 +82,77 @@ export default async function NodeDetailPage({
 
       <OnlineTrend
         nodeId={nodeId}
+        query={currentQuery}
         range={range}
         samples={trendSamples}
       />
 
       <section className="panel">
-        <div className="panel-header">
-          <h2>Samples</h2>
+        <div className="panel-header samples-header">
+          <div>
+            <h2>Samples</h2>
+            <p className="muted samples-summary">
+              {samplePagination.totalCount === 0
+                ? "No samples recorded for this node yet."
+                : `Showing ${samplePagination.startItem}-${samplePagination.endItem} of ${samplePagination.totalCount} samples`}
+            </p>
+          </div>
+          <div className="samples-toolbar">
+            <div className="samples-page-size-picker">
+              <span className="muted">Per page</span>
+              <div className="segmented segmented-compact" aria-label="Samples per page">
+                {SAMPLE_PAGE_SIZES.map((size) => (
+                  <Link
+                    key={size}
+                    className={size === samplePagination.pageSize ? "active" : ""}
+                    href={buildNodeDetailHref(nodeId, currentQuery, {
+                      page: 1,
+                      pageSize: size
+                    })}
+                  >
+                    {size}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            {samplePagination.totalPages > 1 ? (
+              <div className="samples-pagination" aria-label="Samples pagination">
+                {samplePagination.hasPreviousPage ? (
+                  <Link
+                    className="button"
+                    href={buildNodeDetailHref(nodeId, currentQuery, {
+                      page: samplePagination.page - 1,
+                      pageSize: samplePagination.pageSize
+                    })}
+                  >
+                    Previous
+                  </Link>
+                ) : (
+                  <span className="button is-disabled" aria-disabled="true">
+                    Previous
+                  </span>
+                )}
+                <span className="samples-page-indicator">
+                  Page {samplePagination.page} / {samplePagination.totalPages}
+                </span>
+                {samplePagination.hasNextPage ? (
+                  <Link
+                    className="button"
+                    href={buildNodeDetailHref(nodeId, currentQuery, {
+                      page: samplePagination.page + 1,
+                      pageSize: samplePagination.pageSize
+                    })}
+                  >
+                    Next
+                  </Link>
+                ) : (
+                  <span className="button is-disabled" aria-disabled="true">
+                    Next
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="table-wrap">
           <table>
@@ -75,27 +169,35 @@ export default async function NodeDetailPage({
               </tr>
             </thead>
             <tbody>
-              {samples.map((sample) => (
-                <tr key={sample.id}>
-                  <td>{formatDateTime(sample.checkedAt)}</td>
-                  <td>
-                    <span className="status">
-                      <span className={`dot ${sample.isOnline ? "online" : ""}`} />
-                      {sample.isOnline ? "Online" : "Offline"}
-                    </span>
+              {samples.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="muted">
+                    No samples recorded for this node yet.
                   </td>
-                  <td>
-                    {sample.matchedTelemetryNames.length
-                      ? sample.matchedTelemetryNames.join(", ")
-                      : "-"}
-                  </td>
-                  <td>{sample.location ?? "-"}</td>
-                  <td>{formatDuration(sample.nodeUptimeSeconds)}</td>
-                  <td>{sample.blockHeight ?? "-"}</td>
-                  <td>{sample.finalizedBlockHeight ?? "-"}</td>
-                  <td>{sample.version ?? "-"}</td>
                 </tr>
-              ))}
+              ) : (
+                samples.map((sample) => (
+                  <tr key={sample.id}>
+                    <td>{formatDateTime(sample.checkedAt)}</td>
+                    <td>
+                      <span className="status">
+                        <span className={`dot ${sample.isOnline ? "online" : ""}`} />
+                        {sample.isOnline ? "Online" : "Offline"}
+                      </span>
+                    </td>
+                    <td>
+                      {sample.matchedTelemetryNames.length
+                        ? sample.matchedTelemetryNames.join(", ")
+                        : "-"}
+                    </td>
+                    <td>{sample.location ?? "-"}</td>
+                    <td>{formatDuration(sample.nodeUptimeSeconds)}</td>
+                    <td>{sample.blockHeight ?? "-"}</td>
+                    <td>{sample.finalizedBlockHeight ?? "-"}</td>
+                    <td>{sample.version ?? "-"}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -106,10 +208,12 @@ export default async function NodeDetailPage({
 
 function OnlineTrend({
   nodeId,
+  query,
   range,
   samples
 }: {
   nodeId: number;
+  query: NodeDetailQueryState;
   range: TrendRange;
   samples: NodeSample[];
 }) {
@@ -125,7 +229,7 @@ function OnlineTrend({
             <Link
               key={item.value}
               className={item.value === range ? "active" : ""}
-              href={`/nodes/${nodeId}?range=${item.value}`}
+              href={buildNodeDetailHref(nodeId, query, { range: item.value })}
             >
               {item.label}
             </Link>
@@ -166,4 +270,44 @@ function OnlineTrend({
       )}
     </section>
   );
+}
+
+function normalizeNodeDetailQuery(query?: NodeDetailSearchParams): NodeDetailQueryState {
+  return {
+    range: getSingleQueryValue(query?.range),
+    page: getSingleQueryValue(query?.page),
+    pageSize: getSingleQueryValue(query?.pageSize)
+  };
+}
+
+function buildNodeDetailHref(
+  nodeId: number,
+  query: NodeDetailQueryState,
+  updates: Partial<Record<keyof NodeDetailQueryState, string | number | null>> = {}
+) {
+  const range = updates.range === null
+    ? undefined
+    : String(updates.range ?? query.range ?? "");
+  const page = updates.page === null
+    ? undefined
+    : String(updates.page ?? query.page ?? "");
+  const pageSize = updates.pageSize === null
+    ? undefined
+    : String(updates.pageSize ?? query.pageSize ?? "");
+  const params = new URLSearchParams();
+
+  if (range) {
+    params.set("range", range);
+  }
+
+  if (page && page !== "1") {
+    params.set("page", page);
+  }
+
+  if (pageSize && pageSize !== String(DEFAULT_SAMPLE_PAGE_SIZE)) {
+    params.set("pageSize", pageSize);
+  }
+
+  const search = params.toString();
+  return search ? `/nodes/${nodeId}?${search}` : `/nodes/${nodeId}`;
 }
