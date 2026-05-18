@@ -1,5 +1,12 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import {
+  getNextDashboardSort,
+  parseDashboardSort,
+  sortDashboardNodes,
+  type DashboardSortColumn,
+  type DashboardSortState
+} from "@/lib/dashboard-sort";
 import { projectEquirectangular } from "@/lib/map-projection";
 import { getDashboardData } from "@/lib/repository";
 import type { NodeSample, NodeSummary } from "@/lib/types";
@@ -13,8 +20,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ sort?: string | string[]; dir?: string | string[] }>;
+}) {
+  const params = await searchParams;
   const { nodes, lastCheckRun, checkIntervalMinutes } = await getDashboardData();
+  const currentSort = parseDashboardSort(params?.sort, params?.dir);
+  const sortedNodes = sortDashboardNodes(nodes, currentSort);
   const enabledNodes = nodes.filter((node) => node.enabled);
   const onlineNodes = enabledNodes.filter((node) => node.latestSample?.isOnline);
   const offlineNodes = enabledNodes.length - onlineNodes.length;
@@ -87,19 +101,19 @@ export default async function DashboardPage() {
           <table>
             <thead>
               <tr>
-                <th>Status</th>
+                <SortableHeader label="Status" column="status" currentSort={currentSort} />
                 <th>Label</th>
                 <th>Matched telemetry</th>
                 <th>Location</th>
                 <th>Block</th>
                 <th>Finalized Block</th>
-                <th>Node Uptime</th>
-                <th>Weekly</th>
-                <th>Monthly</th>
+                <SortableHeader label="Node Uptime" column="uptime" currentSort={currentSort} />
+                <SortableHeader label="Weekly" column="weekly" currentSort={currentSort} />
+                <SortableHeader label="Monthly" column="monthly" currentSort={currentSort} />
               </tr>
             </thead>
             <tbody>
-              {nodes.map((node) => (
+              {sortedNodes.map((node) => (
                 <tr key={node.id}>
                   <td>
                     <span className="status">
@@ -137,7 +151,7 @@ export default async function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {nodes.length === 0 ? (
+              {sortedNodes.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="muted">
                     No nodes registered yet. Open Admin to add node name patterns.
@@ -150,6 +164,46 @@ export default async function DashboardPage() {
       </section>
     </main>
   );
+}
+
+function SortableHeader({
+  label,
+  column,
+  currentSort
+}: {
+  label: string;
+  column: DashboardSortColumn;
+  currentSort: DashboardSortState | null;
+}) {
+  const nextSort = getNextDashboardSort(currentSort, column);
+  const isActive = currentSort?.column === column;
+  const direction = isActive ? currentSort.direction : null;
+
+  return (
+    <th scope="col" aria-sort={getAriaSort(direction)}>
+      <Link
+        className={`sort-link${isActive ? " active" : ""}`}
+        href={{
+          pathname: "/",
+          query: {
+            sort: nextSort.column,
+            dir: nextSort.direction
+          }
+        }}
+      >
+        <span>{label}</span>
+        <span className="sort-indicator" aria-hidden="true">
+          {direction === "asc" ? "↑" : direction === "desc" ? "↓" : "↕"}
+        </span>
+      </Link>
+    </th>
+  );
+}
+
+function getAriaSort(direction: DashboardSortState["direction"] | null) {
+  if (direction === "asc") return "ascending";
+  if (direction === "desc") return "descending";
+  return "none";
 }
 
 function NodeWorldMap({ nodes }: { nodes: NodeSummary[] }) {

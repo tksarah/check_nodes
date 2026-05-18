@@ -522,6 +522,21 @@ th {
   font-weight: 700;
 }
 
+.sort-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-link.active {
+  color: var(--text);
+}
+
+.sort-indicator {
+  min-width: 1em;
+  text-align: center;
+}
+
 .status {
   display: inline-flex;
   align-items: center;
