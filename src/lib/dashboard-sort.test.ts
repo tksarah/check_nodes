@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDashboardNodeStatus,
   getNextDashboardSort,
   parseDashboardSort,
   sortDashboardNodes,
+  SYNCING_BLOCK_GAP_THRESHOLD,
   type DashboardSortState
 } from "./dashboard-sort";
 import type { NodeSummary } from "./types";
@@ -46,11 +48,12 @@ describe("sortDashboardNodes", () => {
     expect(sortDashboardNodes(nodes, null)).toBe(nodes);
   });
 
-  it("sorts status descending as online, offline, disabled, unknown", () => {
+  it("sorts status descending as online, syncing, offline, disabled, unknown", () => {
     const result = sort(nodes(), { column: "status", direction: "desc" });
 
     expect(result.map((item) => item.label)).toEqual([
       "Online node",
+      "Syncing node",
       "Offline node",
       "Disabled node",
       "Unknown node"
@@ -101,6 +104,50 @@ describe("sortDashboardNodes", () => {
   });
 });
 
+describe("getDashboardNodeStatus", () => {
+  it("marks an online node as syncing when the block gap reaches the threshold", () => {
+    expect(
+      getDashboardNodeStatus(
+        node({
+          id: 1,
+          label: "Threshold node",
+          isOnline: true,
+          blockHeight: 1000,
+          finalizedBlockHeight: 1000 - SYNCING_BLOCK_GAP_THRESHOLD
+        })
+      )
+    ).toBe("syncing");
+  });
+
+  it("keeps an online node online when the block gap is below the threshold", () => {
+    expect(
+      getDashboardNodeStatus(
+        node({
+          id: 1,
+          label: "Healthy node",
+          isOnline: true,
+          blockHeight: 1000,
+          finalizedBlockHeight: 1000 - SYNCING_BLOCK_GAP_THRESHOLD + 1
+        })
+      )
+    ).toBe("online");
+  });
+
+  it("does not mark a node syncing when block data is incomplete", () => {
+    expect(
+      getDashboardNodeStatus(
+        node({
+          id: 1,
+          label: "Missing finalized",
+          isOnline: true,
+          blockHeight: 1000,
+          finalizedBlockHeight: null
+        })
+      )
+    ).toBe("online");
+  });
+});
+
 function sort(items: NodeSummary[], sortState: DashboardSortState) {
   return sortDashboardNodes(items, sortState);
 }
@@ -110,7 +157,8 @@ function nodes() {
     node({ id: 1, label: "Unknown node", enabled: true, isOnline: null }),
     node({ id: 2, label: "Disabled node", enabled: false, isOnline: true }),
     node({ id: 3, label: "Offline node", enabled: true, isOnline: false }),
-    node({ id: 4, label: "Online node", enabled: true, isOnline: true })
+    node({ id: 4, label: "Syncing node", enabled: true, isOnline: true, blockHeight: 1000, finalizedBlockHeight: 488 }),
+    node({ id: 5, label: "Online node", enabled: true, isOnline: true, blockHeight: 1000, finalizedBlockHeight: 900 })
   ];
 }
 
@@ -120,6 +168,8 @@ function node(options: {
   enabled?: boolean;
   isOnline?: boolean | null;
   uptime?: number | null;
+  blockHeight?: number | null;
+  finalizedBlockHeight?: number | null;
   weeklyPercent?: number | null;
   weeklyHours?: number;
   monthlyPercent?: number | null;
@@ -145,8 +195,8 @@ function node(options: {
             matchedTelemetryNames: [],
             startupTime: null,
             nodeUptimeSeconds: options.uptime ?? null,
-            blockHeight: null,
-            finalizedBlockHeight: null,
+            blockHeight: options.blockHeight ?? null,
+            finalizedBlockHeight: options.finalizedBlockHeight ?? null,
             location: null,
             latitude: null,
             longitude: null,

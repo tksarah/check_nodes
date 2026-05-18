@@ -2,9 +2,16 @@ import { NodeSummary } from "./types";
 
 export const DASHBOARD_SORT_COLUMNS = ["status", "uptime", "weekly", "monthly"] as const;
 export const DASHBOARD_SORT_DIRECTIONS = ["asc", "desc"] as const;
+export const SYNCING_BLOCK_GAP_THRESHOLD = 512;
 
 export type DashboardSortColumn = (typeof DASHBOARD_SORT_COLUMNS)[number];
 export type DashboardSortDirection = (typeof DASHBOARD_SORT_DIRECTIONS)[number];
+export type DashboardNodeStatus =
+  | "unknown"
+  | "disabled"
+  | "offline"
+  | "syncing"
+  | "online";
 
 export type DashboardSortState = {
   column: DashboardSortColumn;
@@ -45,6 +52,25 @@ export function getNextDashboardSort(
   }
 
   return { column, direction: "desc" };
+}
+
+export function getDashboardNodeStatus(node: NodeSummary): DashboardNodeStatus {
+  if (!node.latestSample) return "unknown";
+  if (!node.enabled) return "disabled";
+  if (node.latestSample.isOnline === false) return "offline";
+  if (node.latestSample.isOnline !== true) return "unknown";
+
+  const { blockHeight, finalizedBlockHeight } = node.latestSample;
+
+  if (
+    blockHeight != null &&
+    finalizedBlockHeight != null &&
+    blockHeight - finalizedBlockHeight >= SYNCING_BLOCK_GAP_THRESHOLD
+  ) {
+    return "syncing";
+  }
+
+  return "online";
 }
 
 function normalizeColumn(value?: string | string[]) {
@@ -106,9 +132,12 @@ function compareNodes(
 }
 
 function statusRank(node: NodeSummary) {
-  if (!node.enabled) return 1;
-  if (node.latestSample?.isOnline === true) return 3;
-  if (node.latestSample?.isOnline === false) return 2;
+  const status = getDashboardNodeStatus(node);
+
+  if (status === "online") return 4;
+  if (status === "syncing") return 3;
+  if (status === "offline") return 2;
+  if (status === "disabled") return 1;
   return 0;
 }
 

@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
 import {
+  getDashboardNodeStatus,
   getNextDashboardSort,
   parseDashboardSort,
   sortDashboardNodes,
@@ -113,19 +114,29 @@ export default async function DashboardPage({
               </tr>
             </thead>
             <tbody>
-              {sortedNodes.map((node) => (
+              {sortedNodes.map((node) => {
+                const status = getDashboardNodeStatus(node);
+                const statusLabel =
+                  status === "online"
+                    ? "Online"
+                    : status === "syncing"
+                      ? "Syncing"
+                      : status === "offline"
+                        ? "Offline"
+                        : status === "disabled"
+                          ? "Disabled"
+                          : "Unknown";
+
+                return (
                 <tr key={node.id}>
                   <td>
                     <span className="status">
-                      <span
-                        className={`dot ${node.latestSample?.isOnline ? "online" : ""}`}
-                        aria-hidden="true"
-                      />
-                      {node.latestSample?.isOnline ? "Online" : "Offline"}
+                      <span className={`dot ${status}`} aria-hidden="true" />
+                      {statusLabel}
                     </span>
                     <p className="muted">
                       <Link href={`/nodes/${node.id}`}>Detail</Link>
-                      {!node.enabled ? " / Disabled" : ""}
+                      {!node.enabled && status !== "disabled" ? " / Disabled" : ""}
                     </p>
                   </td>
                   <td>
@@ -150,7 +161,8 @@ export default async function DashboardPage({
                     <p className="muted">{formatHours(node.monthly.onlineHours)} online</p>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {sortedNodes.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="muted">

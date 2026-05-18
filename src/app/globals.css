@@ -597,6 +597,11 @@ th {
   box-shadow: 0 0 18px rgba(53, 242, 162, 0.8);
 }
 
+.dot.syncing {
+  background: var(--yellow);
+  box-shadow: 0 0 18px rgba(255, 196, 77, 0.7);
+}
+
 .pill {
   display: inline-flex;
   max-width: 280px;
