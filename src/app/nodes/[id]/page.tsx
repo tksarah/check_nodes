@@ -127,6 +127,7 @@ export default async function NodeDetailPage({
                   <Link
                     key={size}
                     className={size === samplePagination.pageSize ? "active" : ""}
+                    scroll={false}
                     href={buildNodeDetailHref(nodeId, currentQuery, {
                       page: 1,
                       pageSize: size
@@ -142,6 +143,7 @@ export default async function NodeDetailPage({
                 {samplePagination.hasPreviousPage ? (
                   <Link
                     className="button"
+                    scroll={false}
                     href={buildNodeDetailHref(nodeId, currentQuery, {
                       page: samplePagination.page - 1,
                       pageSize: samplePagination.pageSize
@@ -160,6 +162,7 @@ export default async function NodeDetailPage({
                 {samplePagination.hasNextPage ? (
                   <Link
                     className="button"
+                    scroll={false}
                     href={buildNodeDetailHref(nodeId, currentQuery, {
                       page: samplePagination.page + 1,
                       pageSize: samplePagination.pageSize
