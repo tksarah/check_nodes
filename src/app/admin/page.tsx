@@ -117,7 +117,10 @@ export default async function AdminPage({
             <label>
               Check interval
               <select name="checkIntervalMinutes" defaultValue={checkIntervalMinutes}>
+                <option value="30">30 minutes</option>
                 <option value="60">60 minutes</option>
+                <option value="90">90 minutes</option>
+                <option value="120">120 minutes</option>
                 <option value="180">180 minutes</option>
                 <option value="360">360 minutes</option>
                 <option value="720">720 minutes</option>

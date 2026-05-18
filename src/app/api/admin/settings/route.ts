@@ -2,7 +2,7 @@ import { requireAdminCsrf } from "@/lib/auth";
 import { redirectTo } from "@/lib/redirect";
 import { setCheckIntervalMinutes } from "@/lib/repository";
 
-const ALLOWED_INTERVALS = new Set([60, 180, 360, 720]);
+const ALLOWED_INTERVALS = new Set([30, 60, 90, 120, 180, 360, 720]);
 
 export async function POST(request: Request) {
   const invalid = await requireAdminCsrf(request);
