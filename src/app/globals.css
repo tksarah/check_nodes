@@ -528,6 +528,15 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.detail-node-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
 .samples-page-size-picker {
   display: grid;
   gap: 6px;
@@ -922,6 +931,10 @@ button.clicked {
     display: grid;
   }
 
+  .detail-node-nav {
+    justify-content: flex-start;
+  }
+
   .samples-toolbar,
   .samples-page-size-picker,
   .samples-pagination {
@@ -983,6 +996,14 @@ button.clicked {
 
   .samples-pagination {
     width: 100%;
+  }
+
+  .detail-node-nav {
+    width: 100%;
+  }
+
+  .detail-node-nav .button {
+    flex: 1 1 0;
   }
 
   .samples-pagination .button {

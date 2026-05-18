@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { getNodeStatusLabel, getSampleNodeStatus } from "@/lib/node-status";
@@ -46,11 +46,15 @@ export default async function NodeDetailPage({
   const range = parseTrendRange(currentQuery.range);
   const since = getTrendSince(range);
   const nodes = await getMonitoredNodes(true);
-  const node = nodes.find((candidate) => candidate.id === nodeId);
+  const nodeIndex = nodes.findIndex((candidate) => candidate.id === nodeId);
+  const node = nodeIndex >= 0 ? nodes[nodeIndex] : undefined;
 
   if (!node) {
     notFound();
   }
+
+  const previousNode = nodeIndex > 0 ? nodes[nodeIndex - 1] : null;
+  const nextNode = nodeIndex < nodes.length - 1 ? nodes[nodeIndex + 1] : null;
 
   const [sampleCount, trendSamples] = await Promise.all([
     getSampleCountForNode(nodeId),
@@ -80,6 +84,23 @@ export default async function NodeDetailPage({
           Dashboard
         </Link>
       </header>
+
+      {previousNode || nextNode ? (
+        <nav className="detail-node-nav" aria-label="Adjacent nodes">
+          {previousNode ? (
+            <Link className="button" href={buildNodeDetailHref(previousNode.id, currentQuery)}>
+              <ArrowLeft size={16} />
+              Prev: {previousNode.label}
+            </Link>
+          ) : null}
+          {nextNode ? (
+            <Link className="button" href={buildNodeDetailHref(nextNode.id, currentQuery)}>
+              Next: {nextNode.label}
+              <ArrowRight size={16} />
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
 
       <OnlineTrend
         nodeId={nodeId}
