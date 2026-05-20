@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useState } from "react";
+import { MouseEvent, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 type SubmitButtonProps = {
@@ -21,12 +21,14 @@ export function SubmitButton({
   const [externalPending, setExternalPending] = useState(false);
   const isPending = pending || externalPending;
 
-  function handleClick() {
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (!form) return;
 
     const externalForm = document.getElementById(form);
 
     if (externalForm instanceof HTMLFormElement && externalForm.reportValidity()) {
+      event.preventDefault();
+      externalForm.requestSubmit();
       setExternalPending(true);
     }
   }
