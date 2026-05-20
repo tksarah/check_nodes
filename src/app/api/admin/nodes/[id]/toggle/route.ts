@@ -11,6 +11,8 @@ export async function POST(
 
   const form = await request.formData();
   const { id } = await params;
-  await setNodeEnabled(Number(id), String(form.get("enabled")) === "true");
-  return redirectTo("/admin");
+  const enabled = String(form.get("enabled")) === "true";
+
+  await setNodeEnabled(Number(id), enabled);
+  return redirectTo(`/admin?adminAction=${enabled ? "node-enabled" : "node-disabled"}`);
 }

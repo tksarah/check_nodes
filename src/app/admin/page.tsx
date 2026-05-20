@@ -1,6 +1,15 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Clock, Plus, Save, ShieldCheck, Trash2, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  Plus,
+  Save,
+  ShieldCheck,
+  Trash2,
+  XCircle
+} from "lucide-react";
 import { ADMIN_COOKIE } from "@/lib/config";
 import { getAdminCsrfToken, isAdminAuthenticated } from "@/lib/auth";
 import { getDashboardData } from "@/lib/repository";
@@ -13,7 +22,12 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage({
   searchParams
 }: {
-  searchParams?: Promise<{ check?: string; message?: string }>;
+  searchParams?: Promise<{
+    adminAction?: string;
+    check?: string;
+    interval?: string;
+    message?: string;
+  }>;
 }) {
   const authed = await isAdminAuthenticated();
   const params = await searchParams;
@@ -24,6 +38,7 @@ export default async function AdminPage({
 
   const { nodes, checkIntervalMinutes, lastCheckRun } = await getDashboardData();
   const csrfToken = await getAdminCsrfToken();
+  const adminNotice = getAdminNotice(params?.adminAction, params?.interval);
 
   return (
     <main className="shell">
@@ -35,9 +50,9 @@ export default async function AdminPage({
             alt="Astar"
           />
           <div>
-          <p className="eyebrow">Protected</p>
-          <h1>Admin Console</h1>
-          <p className="muted">Node registration and scheduler controls.</p>
+            <p className="eyebrow">Protected</p>
+            <h1>Admin Console</h1>
+            <p className="muted">Node registration and scheduler controls.</p>
           </div>
         </div>
         <nav className="nav">
@@ -52,9 +67,19 @@ export default async function AdminPage({
         </nav>
       </header>
 
+      {adminNotice ? (
+        <div className="notice success admin-action-notice" role="status" aria-live="polite">
+          <CheckCircle2 className="notice-icon" size={22} />
+          <div>
+            <strong>{adminNotice.title}</strong>
+            <p className="muted">{adminNotice.description}</p>
+          </div>
+        </div>
+      ) : null}
+
       {params?.check === "success" ? (
-        <div className="notice success">
-          <CheckCircle2 size={20} />
+        <div className="notice success" role="status" aria-live="polite">
+          <CheckCircle2 className="notice-icon" size={20} />
           <div>
             <strong>Manual check completed.</strong>
             <p className="muted">
@@ -213,6 +238,54 @@ export default async function AdminPage({
       </section>
     </main>
   );
+}
+
+function getAdminNotice(action?: string, interval?: string) {
+  const intervalLabel = formatIntervalLabel(interval);
+
+  switch (action) {
+    case "node-created":
+      return {
+        title: "Node added.",
+        description: "The new node pattern is now registered."
+      };
+    case "node-updated":
+      return {
+        title: "Node settings saved.",
+        description: "The registered node details were updated."
+      };
+    case "node-deleted":
+      return {
+        title: "Node deleted.",
+        description: "The node was removed from monitoring."
+      };
+    case "node-enabled":
+      return {
+        title: "Node enabled.",
+        description: "The node is included in monitoring again."
+      };
+    case "node-disabled":
+      return {
+        title: "Node disabled.",
+        description: "The node is excluded from monitoring."
+      };
+    case "interval-updated":
+      return {
+        title: "Check interval saved.",
+        description: intervalLabel
+          ? `The scheduler now checks every ${intervalLabel}.`
+          : "The scheduler interval was updated."
+      };
+    default:
+      return null;
+  }
+}
+
+function formatIntervalLabel(interval?: string) {
+  const minutes = Number(interval);
+
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
 async function Login() {

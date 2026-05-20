@@ -15,5 +15,5 @@ export async function POST(request: Request) {
   }
 
   await createMonitoredNode(label, namePattern);
-  return redirectTo("/admin");
+  return redirectTo("/admin?adminAction=node-created");
 }

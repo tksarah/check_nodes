@@ -25,9 +25,9 @@ export async function POST(
     }
 
     await updateMonitoredNode(Number(id), label, namePattern);
+    return redirectTo("/admin?adminAction=node-updated");
   } else {
     await deleteMonitoredNode(Number(id));
+    return redirectTo("/admin?adminAction=node-deleted");
   }
-
-  return redirectTo("/admin");
 }

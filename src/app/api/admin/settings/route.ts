@@ -16,5 +16,5 @@ export async function POST(request: Request) {
   }
 
   await setCheckIntervalMinutes(minutes);
-  return redirectTo("/admin");
+  return redirectTo(`/admin?adminAction=interval-updated&interval=${minutes}`);
 }

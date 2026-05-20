@@ -669,6 +669,7 @@ select {
 }
 
 .notice {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -682,6 +683,36 @@ select {
 .notice.success {
   border-color: rgba(53, 242, 162, 0.38);
   background: rgba(53, 242, 162, 0.1);
+  box-shadow: 0 0 34px rgba(53, 242, 162, 0.1);
+}
+
+.notice.success::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--green);
+  box-shadow: 0 0 18px rgba(53, 242, 162, 0.58);
+}
+
+.notice-icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.notice.success .notice-icon {
+  color: var(--green);
+  filter: drop-shadow(0 0 10px rgba(53, 242, 162, 0.38));
+}
+
+.notice.admin-action-notice {
+  border-color: rgba(53, 242, 162, 0.54);
+  background: linear-gradient(
+    135deg,
+    rgba(53, 242, 162, 0.16),
+    rgba(0, 232, 255, 0.08)
+  );
 }
 
 .notice.error {
