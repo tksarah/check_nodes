@@ -17,6 +17,7 @@ import {
   SAMPLE_PAGE_SIZES
 } from "@/lib/samples-pagination";
 import { NodeSample } from "@/lib/types";
+import { getTrendDisplayBars, type TrendDisplayBar } from "@/lib/trend-bars";
 
 export const dynamic = "force-dynamic";
 
@@ -246,6 +247,11 @@ function OnlineTrend({
   range: TrendRange;
   samples: NodeSample[];
 }) {
+  const displayBars = getTrendDisplayBars(samples, range);
+  const sampleSummary = displayBars.length === samples.length
+    ? `${samples.length} samples`
+    : `${displayBars.length} bars from ${samples.length} samples`;
+
   return (
     <section className="card trend-card">
       <div className="trend-header">
@@ -273,37 +279,45 @@ function OnlineTrend({
           <div className="trend-scroll" aria-label={`${range} online trend`}>
             <div
               className="trend-bars"
-              style={{ gridTemplateColumns: `repeat(${samples.length}, minmax(10px, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${displayBars.length}, minmax(0, 1fr))` }}
             >
-              {samples.map((sample) => {
-                const status = getSampleNodeStatus(sample);
-
-                return (
-                  <span
-                    key={sample.id}
-                    className={status}
-                    title={[
-                      formatDateTime(sample.checkedAt),
-                      getNodeStatusLabel(status),
-                      sample.matchedTelemetryNames.length
-                        ? `Matched: ${sample.matchedTelemetryNames.join(", ")}`
-                        : "No matched telemetry"
-                    ].join(" / ")}
-                  />
-                );
-              })}
+              {displayBars.map((bar) => (
+                <span
+                  key={bar.id}
+                  className={bar.status}
+                  title={getTrendBarTitle(bar)}
+                />
+              ))}
             </div>
           </div>
           <div className="trend-legend">
             <span><i className="legend-online" /> Online</span>
             <span><i className="legend-syncing" /> Syncing</span>
             <span><i className="legend-offline" /> Offline</span>
-            <span>{samples.length} samples</span>
+            <span>{sampleSummary}</span>
           </div>
         </>
       )}
     </section>
   );
+}
+
+function getTrendBarTitle(bar: TrendDisplayBar) {
+  if (bar.isAggregated) {
+    return [
+      `${formatDateTime(bar.start)} - ${formatDateTime(bar.end)}`,
+      getNodeStatusLabel(bar.status),
+      `${bar.sampleCount} samples`
+    ].join(" / ");
+  }
+
+  return [
+    formatDateTime(bar.start),
+    getNodeStatusLabel(bar.status),
+    bar.matchedTelemetryNames.length
+      ? `Matched: ${bar.matchedTelemetryNames.join(", ")}`
+      : "No matched telemetry"
+  ].join(" / ");
 }
 
 function normalizeNodeDetailQuery(query?: NodeDetailSearchParams): NodeDetailQueryState {

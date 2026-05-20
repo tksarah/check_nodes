@@ -807,14 +807,13 @@ button.clicked {
 }
 
 .trend-scroll {
-  overflow-x: auto;
-  padding-bottom: 6px;
+  overflow: hidden;
 }
 
 .trend-bars {
   display: grid;
   gap: 4px;
-  min-width: min(100%, 720px);
+  width: 100%;
   align-items: end;
   padding: 12px;
   border: 1px solid rgba(157, 171, 255, 0.1);
@@ -825,7 +824,6 @@ button.clicked {
 .trend-bars span {
   display: block;
   height: 86px;
-  min-width: 10px;
   border-radius: 4px;
   background: rgba(112, 119, 151, 0.34);
 }
