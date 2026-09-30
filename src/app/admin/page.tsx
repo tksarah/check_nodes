@@ -56,6 +56,7 @@ export default async function AdminPage({
           </div>
         </div>
         <nav className="nav">
+          <Link className="button" href="/admin/rewards">Monthly reports &amp; rewards</Link>
           <Link className="button" href="/">
             <ArrowLeft size={16} />
             Dashboard

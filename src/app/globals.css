@@ -13,6 +13,35 @@
   --amber: #ffc857;
 }
 
+.rewards-shell > .card, .rewards-shell > .panel { margin-bottom: 20px; }
+.rewards-toolbar { display: grid; gap: 18px; }
+.rewards-toolbar .actions { align-items: end; flex-wrap: wrap; }
+.reward-summary, .reward-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px; margin: 24px 0; }
+.reward-summary > div, .reward-metrics > div { display: flex; flex-direction: column; gap: 8px; }
+.reward-summary strong { font-size: 22px; overflow-wrap: anywhere; }
+.reward-metrics span { color: var(--muted); font-size: 13px; }
+.reward-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 20px; }
+.reward-entry-form { max-width: 680px; margin-top: 20px; }
+.rewards-shell textarea { width: 100%; min-height: 76px; resize: vertical; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 8px; color: var(--text); padding: 10px; font: inherit; }
+.rewards-shell label { display: grid; gap: 8px; }
+.rewards-shell .checkbox-label { display: flex; align-items: center; gap: 10px; }
+.rewards-shell input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+.reward-warning { color: var(--amber); font-size: 13px; }
+.reward-private, .reward-payment, .reward-audit, .reward-profile { padding: 16px 0; border-top: 1px solid var(--line); }
+.reward-profile { padding: 18px 22px; }
+.reward-profiles .form-grid { margin-top: 20px; max-width: 680px; }
+.rewards-shell summary { cursor: pointer; overflow-wrap: anywhere; }
+.reward-payment .form-grid { margin-top: 16px; max-width: 680px; }
+.reward-address { overflow-wrap: anywhere; }
+.reward-link { color: var(--cyan); text-decoration: underline; }
+.reward-tx { margin-bottom: 10px; }
+.reward-audit pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 420px; overflow: auto; }
+@media (max-width: 720px) {
+  .reward-settings { grid-template-columns: 1fr; }
+  .rewards-shell .topbar { align-items: flex-start; flex-direction: column; }
+  .rewards-shell .panel-header { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -88,7 +117,7 @@ select {
 .topbar-main {
   display: block;
   align-items: flex-start;
-  padding-right: 130px;
+  padding-right: 310px;
 }
 
 .brand-compact {

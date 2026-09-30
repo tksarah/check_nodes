@@ -62,6 +62,7 @@ export default async function DashboardPage({
             </div>
           </div>
           <nav className="nav topbar-actions">
+            <Link className="button topbar-button" href="/rewards">Monthly rewards</Link>
             <Link className="button topbar-button" href="/admin">
               <Settings size={16} />
               Admin

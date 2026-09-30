@@ -19,6 +19,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://astar:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/astar_monitor}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set}
+      SUBSCAN_API_KEY: ${SUBSCAN_API_KEY:-}
+      PUBFI_API_KEY: ${PUBFI_API_KEY:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       TELEMETRY_URL: ${TELEMETRY_URL:-wss://feed.telemetry.polkadot.io/feed}
       ASTAR_GENESIS_HASH: ${ASTAR_GENESIS_HASH:-0x9eb76c5184c4ab8679d2d5d819fdf90b9c001403e9e17da2e14b6d8aec4029c6}

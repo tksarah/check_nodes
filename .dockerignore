@@ -1,6 +1,7 @@
 node_modules
 .next
 .git
+pubfi_key.txt
 coverage
 *.log
 .env
