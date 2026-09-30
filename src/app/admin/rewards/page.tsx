@@ -57,7 +57,7 @@ export default async function RewardsAdminPage({searchParams}: {searchParams?: P
         <div className="reward-summary"><div><span className="muted">{period.status === "draft" ? "Provisional" : "Confirmed"} total</span><strong>{displayAmount(due)} ASTR</strong>{missing > 0 && <span className="reward-warning">Incomplete: {missing} uncalculated {missing === 1 ? "entry" : "entries"}</span>}</div>
           <div><span className="muted">Actual payments</span><strong>{displayAmount(paid)} ASTR</strong></div><div><span className="muted">Participants</span><strong>{period.entries.length}</strong></div></div>
         <p className="muted">Normal: ≥80% availability earns 100%; below 80% earns 50%. Recovery: 30%. Inactive: 0%. Without Identity: another 50% reduction.</p>
-        <p className="muted">Amounts retain 18 decimal places; the display truncates to 6. Missing observations are not treated as 0%.</p>
+        <p className="muted">Amounts retain 18 decimal places; the display rounds to 2. Missing observations are not treated as 0%.</p>
         {period.status === "draft" ? <div className="reward-settings">
           <Action csrf={csrf} period={period} action="settings"><div className="form-grid">
             <label>Base reward (USD)<DecimalInput name="baseUsd" value={period.baseUsd} required/></label>
@@ -124,7 +124,7 @@ function EntryCard({entry,period,csrf,hasPayments}: {entry: RewardEntry; period:
       <SubmitButton className="primary" pendingLabel="Saving…">Save monthly decision</SubmitButton>
     </form> : <>
       {entry.adjustmentReason && <p className="muted">Internal adjustment reason: {entry.adjustmentReason}</p>}
-      <p><strong>Actual paid: {displayAmount(summary.paidAmount)} ASTR</strong> · Difference (paid − confirmed): {summary.difference} ASTR</p>
+      <p><strong>Actual paid: {displayAmount(summary.paidAmount)} ASTR</strong> · Difference (paid − confirmed): {displayAmount(summary.difference)} ASTR</p>
       <div className="reward-payment-list">{entry.payments.map(p => <div key={p.id} className="reward-payment"><p>{p.paidOn} · {displayAmount(p.amount)} ASTR · <a className="reward-link" href={p.txUrl} target="_blank" rel="noopener noreferrer">View Tx</a></p>{p.memo && <p className="muted">Internal note: {p.memo}</p>}
         <details><summary>Correct payment record</summary><form action={endpoint} method="post" className="form-grid"><Hidden csrf={csrf} month={period.month} action="payment" version={period.version} entryId={entry.id}/><input type="hidden" name="paymentId" value={p.id}/>
           <label>Actual amount (ASTR)<DecimalInput name="amount" value={p.amount} required/></label><label>Payment date (JST)<input type="date" name="paidOn" defaultValue={p.paidOn} required/></label>

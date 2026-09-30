@@ -26,7 +26,11 @@ describe("reward money arithmetic", () => {
   });
   it("preserves at most 18 places and rejects unsafe input", () => {
     expect(decimalString(decimalUnits("00012.000000000000000001"))).toBe("12.000000000000000001");
-    expect(displayAmount("12345.123456999999999999")).toBe("12,345.123456");
+    expect(displayAmount("12345.123456999999999999")).toBe("12,345.12");
+    expect(displayAmount("999.995")).toBe("1,000.00");
+    expect(displayAmount("999.994999999999999999")).toBe("999.99");
+    expect(displayAmount("-0.005")).toBe("-0.01");
+    expect(displayAmount("-0.004999999999999999")).toBe("0.00");
     for (const bad of ["-1","1e18","NaN","1.0000000000000000001","", "1,000"]) expect(() => decimalUnits(bad)).toThrow();
   });
   it.each([["0","Unpaid","-10"],["3","Partially paid","-7"],["10","Paid","0"],["11","Overpaid","1"]])("reconciles %s ASTR",(paid,status,difference) => {

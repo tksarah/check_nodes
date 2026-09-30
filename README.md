@@ -41,7 +41,7 @@ eligibility). Eligibility defaults to **off** and is independent of monitoring.
    from the confirmed reward are shown explicitly; records are not chain-verified.
 
 ASTR calculation uses fixed-point BigInt decimal arithmetic (18 decimal places),
-truncating any excess decimal places. Display truncates to 6 places; CSV preserves
+truncating any excess decimal places. Display rounds to 2 places (half up); CSV preserves
 full precision. Availability retains the existing either-side-online interval
 estimate, clipped to month boundaries/current time. Unknown availability is not
 zero. Gaps longer than twice the captured check interval are flagged but remain

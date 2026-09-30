@@ -39,8 +39,12 @@ export function amount(value: string, positive = false): string {
 
 export function displayAmount(value: string | null): string {
   if (value == null) return "—";
-  const [whole, fraction = ""] = value.split(".");
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${fraction.padEnd(6, "0").slice(0, 6)}`;
+  const negative = value.startsWith("-");
+  const [whole, fraction = ""] = value.replace(/^-/, "").split(".");
+  const thousandths = BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, "0").slice(0, 3));
+  const hundredths = (thousandths + 5n) / 10n;
+  const integer = (hundredths / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative && hundredths > 0n ? "-" : ""}${integer}.${(hundredths % 100n).toString().padStart(2, "0")}`;
 }
 
 export function getMonthBounds(month: string) {
