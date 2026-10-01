@@ -63,6 +63,15 @@ with ledger versions and database row locks to prevent lost updates.
 
 ### Optional Subscan EMA30 Fetch
 
+The reward admin page also shows the fixed reward source account's transferable
+ASTR and reference balance. It fetches on page opening and on **Refresh balance**,
+using `PUBFI_API_KEY` and only PubFi's free Astar account lookup route. Balances
+are independent of the report month, rounded to two places for display, and not
+stored in ledgers, CSV, audit history, or public reports/APIs. Fetch failures do
+not block reward management; a failed refresh keeps the previous value with its
+timestamp and a warning. No database migration or extra environment variable is
+required. The private read-only API is `/api/admin/rewards/source-balance`.
+
 Set `PUBFI_API_KEY` in the server environment or Compose `.env` for PubFi's
 Subscan gateway. Requests use Bearer authentication and only the explicit free
 Astar route: `https://api.pubfi.ai/v1/gateway/subscan/astar/api/scan/price/history:free`.

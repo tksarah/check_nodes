@@ -7,6 +7,8 @@ import { getRewardAudit, getRewardPeriod, getRewardProfiles, listRewardPeriods }
 import type { RewardEntry, RewardPeriod, RewardProfile } from "@/lib/reward-types";
 import { currentMonth, decimalString, decimalUnits, displayAmount, getMonthBounds, paymentSummary, previousMonth } from "@/lib/rewards";
 import { SubmitButton } from "../SubmitButton";
+import { REWARD_SOURCE_ADDRESS } from "@/lib/reward-source-balance";
+import { RewardSourceBalanceCard } from "./RewardSourceBalanceCard";
 
 export const dynamic = "force-dynamic";
 const endpoint = "/api/admin/rewards";
@@ -42,6 +44,7 @@ export default async function RewardsAdminPage({searchParams}: {searchParams?: P
       <nav className="nav"><Link className="button" href="/admin">Admin</Link><Link className="button" href="/rewards">Published reports</Link></nav></header>
     {(params?.error || invalidMonth) && <div className="notice error" role="alert">{invalidMonth ? "Invalid month. Showing the previous month." : params?.error}</div>}
     {params?.saved && <div className="notice success" role="status">Saved successfully.</div>}
+    <RewardSourceBalanceCard address={REWARD_SOURCE_ADDRESS}/>
     <section className="card rewards-toolbar"><form action="/admin/rewards" method="get" className="actions">
       <label>Operational month (JST)<input name="month" type="month" defaultValue={month} min="2000-01" max={currentMonth()} required/></label>
       <button type="submit">Open month</button></form>
