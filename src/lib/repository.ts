@@ -2,7 +2,7 @@ import { PoolClient } from "pg";
 import { pool, query } from "./db";
 import { resolveLocationCoordinates } from "./location-coordinates";
 import { nodeNameMatches, fetchTelemetrySnapshot } from "./telemetry";
-import { AvailabilitySummary, MonitoredNode, NodeSample, NodeSummary } from "./types";
+import { AvailabilitySummary, BinaryVersionObservation, MonitoredNode, NodeSample, NodeSummary } from "./types";
 
 const CHECK_ADVISORY_LOCK_ID = 918273645;
 
@@ -275,10 +275,40 @@ export async function getLatestSamples() {
   const result = await query<SampleRow>(
     `select distinct on (node_id) *
      from node_samples
-     order by node_id, checked_at desc`
+     order by node_id, checked_at desc, id desc`
   );
 
   return new Map(result.rows.map((row) => [Number(row.node_id), mapSample(row)]));
+}
+
+export async function getBinaryVersions(nodeId?: number) {
+  const result = await query<{
+    node_id: string;
+    version: string;
+    checked_at: Date;
+    is_historical: boolean;
+  }>(
+    `select n.id as node_id, observed.version, observed.checked_at,
+            exists (
+              select 1 from node_samples newer
+              where newer.node_id = n.id
+                and (newer.checked_at, newer.id) > (observed.checked_at, observed.id)
+            ) as is_historical
+     from monitored_nodes n
+     cross join lateral (
+       select id, version, checked_at from node_samples
+       where node_id = n.id and version ~ '[^[:space:]]'
+       order by checked_at desc, id desc
+       limit 1
+     ) observed
+     ${nodeId === undefined ? "" : "where n.id = $1"}`,
+    nodeId === undefined ? [] : [nodeId]
+  );
+
+  return new Map<number, BinaryVersionObservation>(result.rows.map(row => [
+    Number(row.node_id),
+    { version: row.version, checkedAt: row.checked_at, isHistorical: row.is_historical }
+  ]));
 }
 
 export async function getLastKnownLocationSamples() {
@@ -352,6 +382,7 @@ export async function getDashboardData() {
   const [
     nodes,
     latestSamples,
+    binaryVersions,
     lastKnownLocationSamples,
     lastCheckRun,
     checkIntervalMinutes
@@ -359,6 +390,7 @@ export async function getDashboardData() {
     await Promise.all([
       getMonitoredNodes(true),
       getLatestSamples(),
+      getBinaryVersions(),
       getLastKnownLocationSamples(),
       getLastCheckRun(),
       getCheckIntervalMinutes()
@@ -367,6 +399,7 @@ export async function getDashboardData() {
   const summaries = await Promise.all(
     nodes.map(async (node): Promise<NodeSummary> => ({
       ...node,
+      binaryVersion: binaryVersions.get(node.id) ?? null,
       latestSample: mergeLatestSampleWithLastKnownLocation(
         latestSamples.get(node.id) ?? null,
         lastKnownLocationSamples.get(node.id) ?? null

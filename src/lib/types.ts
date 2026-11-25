@@ -38,7 +38,14 @@ export type NodeSample = {
   version: string | null;
 };
 
+export type BinaryVersionObservation = {
+  version: string;
+  checkedAt: Date;
+  isHistorical: boolean;
+};
+
 export type NodeSummary = MonitoredNode & {
+  binaryVersion: BinaryVersionObservation | null;
   latestSample: NodeSample | null;
   weekly: AvailabilitySummary;
   monthly: AvailabilitySummary;

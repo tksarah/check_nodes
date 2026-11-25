@@ -1,5 +1,6 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { BinaryVersion } from "./BinaryVersion";
 import {
   getNextDashboardSort,
   parseDashboardSort,
@@ -106,6 +107,7 @@ export default async function DashboardPage({
                 <SortableHeader label="Status" column="status" currentSort={currentSort} />
                 <th>Label</th>
                 <th>Matched telemetry</th>
+                <th>Binary version</th>
                 <th>Location</th>
                 <th>Block</th>
                 <th>Finalized Block</th>
@@ -140,6 +142,7 @@ export default async function DashboardPage({
                       ? node.latestSample.matchedTelemetryNames.join(", ")
                       : "-"}
                   </td>
+                  <td><BinaryVersion observation={node.binaryVersion} /></td>
                   <td>{node.latestSample?.location ?? "-"}</td>
                   <td>{node.latestSample?.blockHeight ?? "-"}</td>
                   <td>{node.latestSample?.finalizedBlockHeight ?? "-"}</td>
@@ -157,7 +160,7 @@ export default async function DashboardPage({
               })}
               {sortedNodes.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="muted">
+                  <td colSpan={10} className="muted">
                     No nodes registered yet. Open Admin to add node name patterns.
                   </td>
                 </tr>

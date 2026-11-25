@@ -184,6 +184,7 @@ function node(options: {
     enabled,
     createdAt: new Date("2026-05-18T00:00:00.000Z"),
     updatedAt: new Date("2026-05-18T00:00:00.000Z"),
+    binaryVersion: null,
     latestSample:
       options.isOnline === null
         ? null

@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { BinaryVersion } from "../../BinaryVersion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { formatDateTime, formatDuration } from "@/lib/format";
 import { getNodeStatusLabel, getSampleNodeStatus } from "@/lib/node-status";
 import {
   getMonitoredNodes,
+  getBinaryVersions,
   getSampleCountForNode,
   getSamplePageForNode,
   getSamplesForNodeSince
@@ -57,9 +59,10 @@ export default async function NodeDetailPage({
   const previousNode = nodeIndex > 0 ? nodes[nodeIndex - 1] : null;
   const nextNode = nodeIndex < nodes.length - 1 ? nodes[nodeIndex + 1] : null;
 
-  const [sampleCount, trendSamples] = await Promise.all([
+  const [sampleCount, trendSamples, binaryVersions] = await Promise.all([
     getSampleCountForNode(nodeId),
-    getSamplesForNodeSince(nodeId, since)
+    getSamplesForNodeSince(nodeId, since),
+    getBinaryVersions(nodeId)
   ]);
   const samplePagination = getSamplePagination(
     sampleCount,
@@ -78,6 +81,7 @@ export default async function NodeDetailPage({
         <div>
           <p className="eyebrow">Node detail</p>
           <h1>{node.label}</h1>
+          <p>Binary version: <BinaryVersion observation={binaryVersions.get(nodeId) ?? null} /></p>
           <p className="muted">Pattern: {node.namePattern}</p>
         </div>
         <Link className="button" href="/">
@@ -191,7 +195,7 @@ export default async function NodeDetailPage({
                 <th>Node Uptime</th>
                 <th>Block</th>
                 <th>Finalized Block</th>
-                <th>Version</th>
+                <th>Binary version</th>
               </tr>
             </thead>
             <tbody>
@@ -223,7 +227,7 @@ export default async function NodeDetailPage({
                       <td>{formatDuration(sample.nodeUptimeSeconds)}</td>
                       <td>{sample.blockHeight ?? "-"}</td>
                       <td>{sample.finalizedBlockHeight ?? "-"}</td>
-                      <td>{sample.version ?? "-"}</td>
+                      <td className="binary-version">{sample.version?.trim() ? sample.version : "-"}</td>
                     </tr>
                   );
                 })
