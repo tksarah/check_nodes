@@ -15,6 +15,7 @@ export async function GET() {
     return Response.json(await fetchRewardSourceBalance(), { headers });
   } catch (error) {
     const message = error instanceof RewardError ? error.message : "Reward source balance is unavailable. Try again later.";
-    return Response.json({ error: message }, { status: error instanceof RewardError ? error.status : 502, headers });
+    const problem = error instanceof RewardError ? error.problem : { code: "balanceNetwork" };
+    return Response.json({ error: message, problem }, { status: error instanceof RewardError ? error.status : 502, headers });
   }
 }

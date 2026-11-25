@@ -2,14 +2,16 @@
 
 import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatDateTime } from "@/lib/format";
+import { rewardProblemText, type RewardProblem } from "@/lib/reward-feedback";
 import { displayAmount } from "@/lib/rewards";
 import type { RewardSourceBalance } from "@/lib/reward-source-balance-types";
+import { useRewardUI } from "./RewardForm";
 
 export function RewardSourceBalanceCard({ address }: { address: string }) {
+  const { t, language, time } = useRewardUI();
   const [balance, setBalance] = useState<RewardSourceBalance | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RewardProblem | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
@@ -24,12 +26,12 @@ export function RewardSourceBalanceCard({ address }: { address: string }) {
       });
       const body = await response.json();
       if (!response.ok) {
-        throw new Error(response.status === 401 ? "Admin session expired. Sign in again."
-          : typeof body.error === "string" ? body.error : "Balance could not be fetched. Try again later.");
+        if (!controller.signal.aborted) setError(response.status === 401 ? { code: "session" } : body.problem ?? { code: "balanceNetwork" });
+        return;
       }
       if (!controller.signal.aborted) setBalance(body as RewardSourceBalance);
-    } catch (failure) {
-      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Balance could not be fetched. Try again later.");
+    } catch {
+      if (!controller.signal.aborted) setError({ code: "balanceNetwork" });
     } finally {
       if (activeRequest.current === controller) {
         activeRequest.current = null;
@@ -43,21 +45,22 @@ export function RewardSourceBalanceCard({ address }: { address: string }) {
     return () => { activeRequest.current?.abort(); activeRequest.current = null; };
   }, [refresh]);
 
-  return <section className="card" aria-labelledby="reward-source-heading">
-    <div className="panel-header"><div><h2 id="reward-source-heading">Reward source balance</h2>
-      <p className="muted">Current account balances · independent of the selected report month.</p></div>
+  return <details className="rw-panel rw-disclosure">
+    <summary>{t("Current source balance", "送金元の現在の残高")}
+      {balance && <span>{displayAmount(balance.transferableAstr)} ASTR · {time(balance.fetchedAt)}</span>}</summary>
+    <div className="rw-body"><div className="panel-header"><p className="muted">{t("Current account balance across all months.", "対象月にかかわらず、現在の口座残高を表示します。")}</p>
       <button type="button" onClick={() => void refresh()} disabled={loading} aria-busy={loading}>
-        {loading && <LoaderCircle className="spin" size={16}/>}{loading ? "Fetching balance…" : "Refresh balance"}
+        {loading && <LoaderCircle className="spin" size={16}/>}{loading ? t("Fetching…", "取得中…") : t("Refresh balance", "残高を更新")}
       </button></div>
     <p className="reward-address"><a className="reward-link" href={`https://astar.subscan.io/account/${address}`} target="_blank" rel="noopener noreferrer">{address}</a></p>
     <div aria-live="polite">
       {balance ? <><div className="reward-summary">
-        <div><span className="muted">Transferable balance</span><strong>{displayAmount(balance.transferableAstr)} ASTR</strong></div>
-        <div><span className="muted">Reference balance</span><strong>{displayAmount(balance.balanceAstr)} ASTR</strong></div>
-      </div><p className="muted">{error ? "Last successful fetch" : "Fetched"}: {formatDateTime(balance.fetchedAt)} (JST) · Subscan via PubFi
-        {balance.sourceGeneratedAt && <><br/>Source response generated: {formatDateTime(balance.sourceGeneratedAt)} (JST)</>}</p></>
-        : <p className="muted">{loading ? "Loading balance…" : "Balance unavailable."}</p>}
+        <div><span className="muted">{t("Transferable", "送金可能額")}</span><strong>{displayAmount(balance.transferableAstr)} ASTR</strong></div>
+        <div><span className="muted">{t("Reference balance", "参考残高")}</span><strong>{displayAmount(balance.balanceAstr)} ASTR</strong></div>
+      </div><p className="muted">{t("Last successful fetch", "最終取得")} · {time(balance.fetchedAt)} · Subscan / PubFi
+        {balance.sourceGeneratedAt && <><br/>{t("Source updated", "取得元の更新")} · {time(balance.sourceGeneratedAt)}</>}</p></>
+        : <p className="muted">{loading ? t("Loading balance…", "残高を取得中…") : t("Balance unavailable.", "残高を取得できませんでした。")}</p>}
     </div>
-    {error && <p className="reward-warning" role="alert">{balance && "Balance update failed. The previous value is shown. "}{error}</p>}
-  </section>;
+    {error && <p className="reward-warning" role="alert">{balance && t("Showing the last successful balance. ", "前回取得できた残高を表示しています。")}{rewardProblemText(error, language)}</p>}
+    </div></details>;
 }

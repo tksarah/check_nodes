@@ -18,27 +18,36 @@ the Polkadot Telemetry feed.
 
 ## Monthly Reports and Rewards
 
-Open `/admin/rewards` after logging in. Configure each monitoring node's reward
-profile (Discord name, region, SS58 payment address, verified Identity and reward
-eligibility). Eligibility defaults to **off** and is independent of monitoring.
+Open `/admin/rewards` after logging in. The month, publication status and next
+action appear above the node list. The **日本語 / English** switch defaults to
+English and remembers the browser's choice. Switching languages keeps the
+selected month, open entries and unsaved inputs.
+
+Use **Participant settings** to register a node's SS58 payment address, verified
+Identity and eligibility. Discord name and region are optional details.
+Eligibility defaults to **off** and is independent of monitoring.
 
 1. Select an operational month and create a draft. Calendar boundaries use Japan
    time; payment month is the following month. Current-month drafts are allowed,
    but confirmation requires the month to have ended.
-2. Enter the verified EMA30 USD/ASTR price for the **first day of the operational
-   month**, with a source/reason. Base reward defaults to USD 30.
+2. After the draft is saved, the app attempts to fetch the verified EMA30
+   USD/ASTR price for the **first UTC day of the operational month** once.
+   If unavailable, open **Set price** to retry or enter the verified price with
+   its source/reason. Base reward defaults to USD 30.
 3. Refresh observations and participant snapshots when required. Refresh adds
    eligible nodes and removes explicitly opted-out nodes, while preserving
    monthly states and amount adjustments. It does not alter confirmed reports.
-4. Review monthly availability and choose Normal, Recovery or Inactive. Normal
+4. Review monthly availability in the node list. Ordinary entries require no
+   individual save. Open an exception to adjust its amount or state. Normal
    receives 100% at availability >=80%, otherwise 50%; Recovery receives 30%;
    Inactive receives 0%. A missing Identity halves the resulting amount. Amount
    adjustments and decisions with insufficient observations require a reason.
 5. Refresh after month-end, then confirm to freeze the calculation and publish the report. A partial-month snapshot cannot be confirmed. Payment addresses,
    Discord names, internal notes and audit history stay private.
-6. Transfer funds externally, then record the actual ASTR amount, payment date
-   and Astar Subscan extrinsic link. Multiple payments are supported. Differences
-   from the confirmed reward are shown explicitly; records are not chain-verified.
+6. Transfer funds externally, then paste the Astar Subscan extrinsic link. Check
+   the prefilled outstanding amount and today's JST date against the receipt.
+   Both fields are editable for partial and earlier payments. The list shows
+   remaining amounts and flags excess payments. Records are entered manually.
 
 ASTR calculation uses fixed-point BigInt decimal arithmetic (18 decimal places),
 truncating any excess decimal places. Display rounds to 2 places (half up); CSV preserves

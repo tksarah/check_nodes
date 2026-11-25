@@ -13,16 +13,16 @@ export function extractSourceBalance(body: unknown): Omit<RewardSourceBalance, "
   const response = object(body);
   const account = object(object(response.data).account);
   if (response.code !== 0 || account.address !== REWARD_SOURCE_ADDRESS) {
-    throw new RewardError("Subscan did not return the expected reward source account.", 502);
+    throw new RewardError("balanceAccount", 502);
   }
   // Unlike `balance` (ASTR), `transferable_balance` is an integer in 10^-18 ASTR.
   if (typeof account.transferable_balance !== "string" || !/^\d{1,38}$/.test(account.transferable_balance)
     || typeof account.balance !== "string") {
-    throw new RewardError("Subscan did not provide valid account balances.", 502);
+    throw new RewardError("balanceData", 502);
   }
   let balanceAstr: string;
   try { balanceAstr = amount(account.balance); } catch {
-    throw new RewardError("Subscan did not provide a valid reference balance.", 502);
+    throw new RewardError("balanceData", 502);
   }
   const generatedAt = response.generated_at;
   const generatedMs = typeof generatedAt === "number" && Number.isSafeInteger(generatedAt) && generatedAt > 0
@@ -37,7 +37,7 @@ export function extractSourceBalance(body: unknown): Omit<RewardSourceBalance, "
 
 export async function fetchRewardSourceBalance(fetcher: typeof fetch = fetch): Promise<RewardSourceBalance> {
   const key = process.env.PUBFI_API_KEY?.trim();
-  if (!key) throw new RewardError("PUBFI_API_KEY is not configured on the server.", 503);
+  if (!key) throw new RewardError("balanceKey", 503);
   try {
     const response = await fetcher(endpoint, {
       method: "POST",
@@ -46,10 +46,10 @@ export async function fetchRewardSourceBalance(fetcher: typeof fetch = fetch): P
       signal: AbortSignal.timeout(10_000),
       cache: "no-store"
     });
-    if (!response.ok) throw new RewardError(`PubFi balance request failed (HTTP ${response.status}). Try again later.`, 502);
+    if (!response.ok) throw new RewardError("balanceHttp", 502, undefined, String(response.status));
     return { ...extractSourceBalance(await response.json()), fetchedAt: new Date().toISOString() };
   } catch (error) {
     if (error instanceof RewardError) throw error;
-    throw new RewardError("Reward source balance could not be fetched or the request timed out. Try again later.", 502);
+    throw new RewardError("balanceNetwork", 502);
   }
 }

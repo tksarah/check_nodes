@@ -28,10 +28,10 @@ describe("private source balance API", () => {
   });
   it("reports unavailable balances instead of inventing zero", async () => {
     vi.mocked(requireAdmin).mockResolvedValue(null);
-    vi.mocked(fetchRewardSourceBalance).mockRejectedValue(new RewardError("PUBFI_API_KEY is not configured on the server.", 503));
+    vi.mocked(fetchRewardSourceBalance).mockRejectedValue(new RewardError("balanceKey", 503));
     const result = await GET();
     expect(result.status).toBe(503);
-    expect(await result.json()).toEqual({ error: "PUBFI_API_KEY is not configured on the server." });
+    expect(await result.json()).toEqual({ error: "PUBFI_API_KEY is not configured on the server.", problem: { code: "balanceKey" } });
   });
   it("does not expose unexpected exception contents", async () => {
     vi.mocked(requireAdmin).mockResolvedValue(null);

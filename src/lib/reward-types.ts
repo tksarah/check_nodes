@@ -1,7 +1,7 @@
 import type { MonthlyAvailability, RewardState } from "./rewards";
 
 export type RewardProfile = {
-  nodeId: number; label: string; monitoringEnabled: boolean;
+  nodeId: number; label: string; monitoringEnabled: boolean; nodeCreatedAt: string;
   discordName: string; region: string; address: string;
   identityName: string; hasIdentity: boolean; eligible: boolean; version: number;
 };

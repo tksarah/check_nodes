@@ -3,6 +3,7 @@ import { query, withTransaction } from "./db";
 import type { RewardAudit, RewardEntry, RewardPayment, RewardPeriod, RewardProfile } from "./reward-types";
 import { amount, calculateReward, getMonthBounds, REWARD_RULE_VERSION, RewardError, summarizeMonth, validateTxUrl, type MonthlyAvailability, type RewardState } from "./rewards";
 import { validatePaymentDate, validateRewardAddress } from "./reward-validation";
+import { reviewRewardDraft } from "./reward-review";
 
 type Row = Record<string, unknown>;
 const str = (r: Row, key: string) => String(r[key] ?? "");
@@ -11,7 +12,7 @@ const money = (value: unknown) => value == null ? null : amount(String(value));
 
 function mapProfile(r: Row): RewardProfile {
   return {
-    nodeId: Number(r.node_id), label: str(r, "label"), monitoringEnabled: Boolean(r.enabled),
+    nodeId: Number(r.node_id), label: str(r, "label"), monitoringEnabled: Boolean(r.enabled), nodeCreatedAt: iso(r.node_created_at),
     discordName: str(r, "discord_name"), region: str(r, "region"), address: str(r, "address"),
     identityName: str(r, "identity_name"), hasIdentity: Boolean(r.has_identity), eligible: Boolean(r.eligible), version: Number(r.version ?? 0)
   };
@@ -33,7 +34,7 @@ function mapEntry(r: Row, payments: RewardPayment[]): RewardEntry {
 }
 
 export async function getRewardProfiles(): Promise<RewardProfile[]> {
-  const result = await query<Row>(`select n.id as node_id, n.label, n.enabled, p.discord_name, p.region, p.address,
+  const result = await query<Row>(`select n.id as node_id, n.label, n.enabled, n.created_at as node_created_at, p.discord_name, p.region, p.address,
     p.identity_name, p.has_identity, p.eligible, p.version from monitored_nodes n
     left join reward_profiles p on p.node_id = n.id order by n.label, n.id`);
   return result.rows.map(mapProfile);
@@ -44,14 +45,14 @@ async function audit(client: PoolClient, periodId: string | null, action: string
     values ($1,$2,$3,$4,$5::jsonb,$6::jsonb)`, [periodId, nodeId ?? null, action, reason, JSON.stringify(before ?? null), JSON.stringify(after ?? null)]);
 }
 
-export async function saveRewardProfile(profile: Omit<RewardProfile, "label" | "monitoringEnabled">) {
+export async function saveRewardProfile(profile: Omit<RewardProfile, "label" | "monitoringEnabled" | "nodeCreatedAt">) {
   if (profile.address) validateRewardAddress(profile.address);
-  if (profile.eligible && !profile.address) throw new RewardError("An eligible node requires a payment address.");
+  if (profile.eligible && !profile.address) throw new RewardError("eligibleAddress", 400, "address");
   await withTransaction(async client => {
     const node = await client.query("select id from monitored_nodes where id=$1 for update", [profile.nodeId]);
-    if (!node.rowCount) throw new RewardError("Node no longer exists.", 404);
+    if (!node.rowCount) throw new RewardError("nodeMissing", 404);
     const existing = await client.query<Row>("select * from reward_profiles where node_id=$1", [profile.nodeId]);
-    if (Number(existing.rows[0]?.version ?? 0) !== profile.version) throw new RewardError("Participant changed. Reload before saving.", 409);
+    if (Number(existing.rows[0]?.version ?? 0) !== profile.version) throw new RewardError("profileChanged", 409);
     await client.query(`insert into reward_profiles (node_id, discord_name, region, address, identity_name, has_identity, eligible)
       values ($1,$2,$3,$4,$5,$6,$7) on conflict (node_id) do update set discord_name=excluded.discord_name,
       region=excluded.region,address=excluded.address,identity_name=excluded.identity_name,has_identity=excluded.has_identity,
@@ -101,12 +102,12 @@ export async function getRewardAudit(periodId: string): Promise<RewardAudit[]> {
 
 async function lockPeriod(client: PoolClient, month: string, version: number) {
   const result = await client.query<Row>("select * from reward_periods where month=$1 for update", [month]);
-  if (!result.rowCount) throw new RewardError("Monthly ledger not found.", 404);
-  if (Number(result.rows[0].version) !== version) throw new RewardError("Ledger changed. Reload before trying again.", 409);
+  if (!result.rowCount) throw new RewardError("ledgerMissing", 404);
+  if (Number(result.rows[0].version) !== version) throw new RewardError("ledgerChanged", 409);
   return (await getRewardPeriod(month, client))!;
 }
 function requireDraft(period: RewardPeriod) {
-  if (period.status !== "draft") throw new RewardError("Confirmed calculation is locked. Reopen the unpaid ledger first.", 409);
+  if (period.status !== "draft") throw new RewardError("locked", 409);
 }
 async function bump(client: PoolClient, id: string) {
   await client.query("update reward_periods set version=version+1,updated_at=now() where id=$1", [id]);
@@ -160,15 +161,15 @@ async function recalculateEntries(client: PoolClient, period: RewardPeriod) {
 
 export async function createRewardPeriod(month: string, now = new Date()) {
   const bounds = getMonthBounds(month);
-  if (bounds.start > now) throw new RewardError("Cannot create a ledger for a future month.");
+  if (bounds.start > now) throw new RewardError("futureMonth", 400, "month");
   return withTransaction(async client => {
     const interval = await client.query<{ value: string }>("select value from settings where key='checkIntervalMinutes'");
     const result = await client.query<Row>(`insert into reward_periods (month,payment_month,price_date,rule_version,check_interval_minutes)
       values ($1,$2,$3,$4,$5) on conflict (month) do nothing returning id`, [month,bounds.paymentMonth,bounds.priceDate,REWARD_RULE_VERSION,Number(interval.rows[0]?.value ?? 60)]);
-    if (!result.rowCount) throw new RewardError("A ledger already exists for this month.", 409);
+    if (!result.rowCount) throw new RewardError("ledgerExists", 409);
     const period = (await getRewardPeriod(month, client))!;
     await refreshEntries(client,period,now);
-    const after = await getRewardPeriod(month,client);
+    const after = (await getRewardPeriod(month,client))!;
     await audit(client,period.id,"created","",null,after);
     return after;
   });
@@ -185,13 +186,13 @@ export async function refreshRewardPeriod(month: string, version: number, now = 
 }
 
 export async function saveRewardSettings(month: string, version: number, baseUsd: string, priceUsd: string | null, reason: string) {
-  baseUsd = amount(baseUsd,true);
-  priceUsd = priceUsd == null ? null : amount(priceUsd,true);
+  baseUsd = amount(baseUsd, true, "baseUsd");
+  priceUsd = priceUsd == null ? null : amount(priceUsd, true, "priceUsd");
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
     requireDraft(before);
     const priceChanged = priceUsd !== before.priceUsd;
-    if (priceChanged && !reason.trim()) throw new RewardError("A reason is required for a manual price change.");
+    if (priceChanged && !reason.trim()) throw new RewardError("priceReason", 400, "reason");
     await client.query(`update reward_periods set base_usd=$2,price_usd=$3,
       price_source=case when $4 then 'Manual EMA30' else price_source end,
       price_fetched_at=case when $4 then now() else price_fetched_at end,
@@ -207,7 +208,7 @@ export async function saveAutomaticRewardPrice(month: string, version: number, p
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
     requireDraft(before);
-    if (before.priceUsd != null) throw new RewardError("A saved price already exists. Automatic fetch cannot overwrite it.", 409);
+    if (before.priceUsd != null) throw new RewardError("priceSaved", 409);
     await client.query("update reward_periods set price_usd=$2,price_source=$3,price_fetched_at=$4 where id=$1", [before.id,amount(price.price,true),price.source,price.fetchedAt]);
     await recalculateEntries(client,(await getRewardPeriod(month,client))!);
     await bump(client,before.id);
@@ -216,14 +217,14 @@ export async function saveAutomaticRewardPrice(month: string, version: number, p
 }
 
 export async function saveRewardEntry(month: string, version: number, entryId: string, state: RewardState, override: string | null, reason: string) {
-  if (!["normal","recovery","inactive"].includes(state)) throw new RewardError("Invalid reward state.");
-  const overrideAmount = override == null ? null : amount(override);
-  if (overrideAmount != null && !reason.trim()) throw new RewardError("A reason is required for an amount adjustment.");
+  if (!["normal","recovery","inactive"].includes(state)) throw new RewardError("state", 400, "state");
+  const overrideAmount = override == null ? null : amount(override, false, "overrideAmount");
+  if (overrideAmount != null && !reason.trim()) throw new RewardError("adjustmentReason", 400, "reason");
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
     requireDraft(before);
     const entry = before.entries.find(e => e.id === entryId);
-    if (!entry) throw new RewardError("Reward entry not found.", 404);
+    if (!entry) throw new RewardError("entryMissing", 404);
     await client.query("update reward_entries set state=$2,override_amount=$3,adjustment_reason=$4 where id=$1",[entryId,state,overrideAmount,reason]);
     await recalculateEntries(client,(await getRewardPeriod(month,client))!);
     await bump(client,before.id);
@@ -235,17 +236,11 @@ export async function confirmRewardPeriod(month: string, version: number, now = 
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
     requireDraft(before);
-    if (getMonthBounds(month).end > now) throw new RewardError("A month must be complete before its rewards can be confirmed.");
-    if (new Date(before.observedAt) < getMonthBounds(month).end) throw new RewardError("Refresh observations after the operational month has ended before confirming.");
-    if (!before.priceUsd) throw new RewardError("A verified positive EMA30 price is required.");
-    if (!before.entries.length) throw new RewardError("Add eligible participants before confirming.");
+    const review = reviewRewardDraft(before, now);
+    const issue = review.monthIssues[0] ?? Object.values(review.entryIssues)[0];
+    if (issue) throw new RewardError(issue.code, 400, issue.field, issue.detail);
     for (const entry of before.entries) {
-      validateRewardAddress(entry.address);
       const finalAmount = entry.overrideAmount ?? entry.calculatedAmount;
-      if (finalAmount == null) throw new RewardError(`${entry.label}: observations are insufficient. Enter a reasoned amount adjustment.`);
-      if ((entry.overrideAmount != null || entry.availability.availabilityPercent == null) && !entry.adjustmentReason.trim()) {
-        throw new RewardError(`${entry.label}: a reason is required for the manual decision.`);
-      }
       await client.query("update reward_entries set confirmed_amount=$2 where id=$1",[entry.id,finalAmount]);
     }
     await client.query("update reward_periods set status='confirmed',confirmed_at=$2 where id=$1",[before.id,now]);
@@ -255,11 +250,11 @@ export async function confirmRewardPeriod(month: string, version: number, now = 
 }
 
 export async function reopenRewardPeriod(month: string, version: number, reason: string) {
-  if (!reason.trim()) throw new RewardError("A reason is required to reopen a ledger.");
+  if (!reason.trim()) throw new RewardError("reopenReason", 400, "reason");
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
-    if (before.status !== "confirmed") throw new RewardError("Only confirmed ledgers can be reopened.",409);
-    if (before.entries.some(entry => entry.payments.length > 0)) throw new RewardError("This ledger has payments. Correct the payment records with a reason; the confirmed reward stays locked.",409);
+    if (before.status !== "confirmed") throw new RewardError("confirmedOnly", 409);
+    if (before.entries.some(entry => entry.payments.length > 0)) throw new RewardError("hasPayments", 409);
     await client.query("update reward_periods set status='draft',confirmed_at=null where id=$1",[before.id]);
     await client.query("update reward_entries set confirmed_amount=null where period_id=$1",[before.id]);
     await bump(client,before.id);
@@ -270,18 +265,18 @@ export async function reopenRewardPeriod(month: string, version: number, reason:
 export async function saveRewardPayment(month: string, version: number, entryId: string, input: {
   amount: string; paidOn: string; txUrl: string; memo: string; paymentId?: string; reason?: string;
 }) {
-  const paymentAmount = amount(input.amount,true);
+  const paymentAmount = amount(input.amount, true, "amount");
   const paidOn = validatePaymentDate(input.paidOn);
   const txUrl = validateTxUrl(input.txUrl);
-  if (input.paymentId && !input.reason?.trim()) throw new RewardError("A correction reason is required.");
+  if (input.paymentId && !input.reason?.trim()) throw new RewardError("correctionReason", 400, "reason");
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
-    if (before.status !== "confirmed") throw new RewardError("Confirm rewards before recording a payment.",409);
+    if (before.status !== "confirmed") throw new RewardError("confirmFirst", 409);
     const entry = before.entries.find(e => e.id === entryId);
-    if (!entry) throw new RewardError("Reward entry not found.",404);
+    if (!entry) throw new RewardError("entryMissing", 404);
     const previous = input.paymentId ? entry.payments.find(p => p.id === input.paymentId) : null;
-    if (input.paymentId && !previous) throw new RewardError("Payment not found.",404);
-    if (entry.payments.some(p => p.txUrl === txUrl && p.id !== input.paymentId)) throw new RewardError("This transaction is already recorded for this node.",409);
+    if (input.paymentId && !previous) throw new RewardError("paymentMissing", 404);
+    if (entry.payments.some(p => p.txUrl === txUrl && p.id !== input.paymentId)) throw new RewardError("duplicateTx", 409, "txUrl");
     if (input.paymentId) {
       await client.query("update reward_payments set amount=$2,paid_on=$3,tx_url=$4,memo=$5,version=version+1,updated_at=now() where id=$1",[input.paymentId,paymentAmount,paidOn,txUrl,input.memo]);
     } else {
@@ -294,13 +289,13 @@ export async function saveRewardPayment(month: string, version: number, entryId:
 }
 
 export async function correctPaidReward(month: string, version: number, entryId: string, correctedAmount: string, reason: string) {
-  if (!reason.trim()) throw new RewardError("A correction reason is required.");
-  correctedAmount = amount(correctedAmount);
+  if (!reason.trim()) throw new RewardError("correctionReason", 400, "reason");
+  correctedAmount = amount(correctedAmount, false, "amount");
   await withTransaction(async client => {
     const before = await lockPeriod(client,month,version);
-    if (before.status !== "confirmed" || !before.entries.some(e => e.payments.length)) throw new RewardError("Use reopening for an unpaid ledger.",409);
+    if (before.status !== "confirmed" || !before.entries.some(e => e.payments.length)) throw new RewardError("reopenFirst", 409);
     const entry = before.entries.find(e => e.id === entryId);
-    if (!entry) throw new RewardError("Reward entry not found.",404);
+    if (!entry) throw new RewardError("entryMissing", 404);
     await client.query("update reward_entries set override_amount=$2,confirmed_amount=$2,adjustment_reason=$3 where id=$1",[entryId,correctedAmount,reason]);
     await bump(client,before.id);
     await audit(client,before.id,"confirmed_amount_corrected",reason,entry,

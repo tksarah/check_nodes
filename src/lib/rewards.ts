@@ -1,3 +1,6 @@
+import { RewardError } from "./reward-feedback";
+export { RewardError } from "./reward-feedback";
+
 // Amounts are fixed-point decimal integers. No floating-point money arithmetic.
 export const MONEY_SCALE = 10n ** 18n;
 export const REWARD_RULE_VERSION = "peers-v1";
@@ -12,13 +15,9 @@ export type MonthlyAvailability = {
   periodHours: number;
 };
 
-export class RewardError extends Error {
-  constructor(message: string, public status = 400) { super(message); }
-}
-
-export function decimalUnits(value: string): bigint {
+export function decimalUnits(value: string, field?: string): bigint {
   if (!/^\d{1,20}(?:\.\d{1,18})?$/.test(value)) {
-    throw new RewardError("Enter a non-negative decimal with at most 18 decimal places.");
+    throw new RewardError("decimal", 400, field);
   }
   const [whole, fraction = ""] = value.split(".");
   return BigInt(whole) * MONEY_SCALE + BigInt(fraction.padEnd(18, "0"));
@@ -31,9 +30,9 @@ export function decimalString(value: bigint): string {
   return `${negative ? "-" : ""}${units / MONEY_SCALE}${fraction ? `.${fraction}` : ""}`;
 }
 
-export function amount(value: string, positive = false): string {
-  const units = decimalUnits(value);
-  if (positive && units === 0n) throw new RewardError("Amount must be greater than zero.");
+export function amount(value: string, positive = false, field?: string): string {
+  const units = decimalUnits(value, field);
+  if (positive && units === 0n) throw new RewardError("positive", 400, field);
   return decimalString(units);
 }
 
@@ -48,9 +47,9 @@ export function displayAmount(value: string | null): string {
 }
 
 export function getMonthBounds(month: string) {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new RewardError("Use a month in YYYY-MM format.");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new RewardError("monthFormat", 400, "month");
   const [year, number] = month.split("-").map(Number);
-  if (year < 2000 || year > 2199) throw new RewardError("Month must be between 2000 and 2199.");
+  if (year < 2000 || year > 2199) throw new RewardError("monthRange", 400, "month");
   const start = new Date(Date.UTC(year, number - 1, 1, -9));
   const end = new Date(Date.UTC(year, number, 1, -9));
   const paymentMonth = `${number === 12 ? year + 1 : year}-${String(number === 12 ? 1 : number + 1).padStart(2, "0")}`;
@@ -58,7 +57,11 @@ export function getMonthBounds(month: string) {
 }
 
 export function currentMonth(now = new Date()) {
-  return new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 7);
+  return japanDate(now).slice(0, 7);
+}
+
+export function japanDate(now = new Date()) {
+  return new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
 }
 
 export function previousMonth(now = new Date()) {
@@ -107,7 +110,7 @@ export function calculateReward(base: string, price: string | null, state: Rewar
   const identityPercent = identity ? 100 : 50;
   if (price == null || statePercent == null) return { calculatedAmount: null, statePercent, identityPercent };
   const priceUnits = decimalUnits(price);
-  if (priceUnits === 0n) throw new RewardError("Price must be greater than zero.");
+  if (priceUnits === 0n) throw new RewardError("pricePositive", 400, "priceUsd");
   const units = decimalUnits(base) * BigInt(statePercent) * BigInt(identityPercent) * MONEY_SCALE / (10_000n * priceUnits);
   return { calculatedAmount: decimalString(units), statePercent, identityPercent };
 }
@@ -123,9 +126,9 @@ export function paymentSummary(expected: string | null, payments: Array<{ amount
 
 export function validateTxUrl(value: string) {
   let url: URL;
-  try { url = new URL(value); } catch { throw new RewardError("Enter a valid Subscan transaction URL."); }
+  try { url = new URL(value); } catch { throw new RewardError("txUrl", 400, "txUrl"); }
   if (url.protocol !== "https:" || url.hostname !== "astar.subscan.io" || !/^\/extrinsic\/(?:\d+-\d+|0x[\da-f]{64})\/?$/i.test(url.pathname) || url.search || url.hash || url.username || url.password) {
-    throw new RewardError("Use an https://astar.subscan.io/extrinsic/… transaction link.");
+    throw new RewardError("txUrl", 400, "txUrl");
   }
   return `https://astar.subscan.io${url.pathname.replace(/\/$/, "")}`;
 }
