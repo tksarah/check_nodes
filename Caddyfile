@@ -17,5 +17,8 @@
 	}
 
 	encode zstd gzip
+	request_body /api/admin/login* {
+		max_size 8KiB
+	}
 	reverse_proxy web:3000
 }
